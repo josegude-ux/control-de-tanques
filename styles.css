@@ -59,3 +59,9 @@ html, body { max-width:100%; }
 .update-info{font-size:13px;color:#6a6062;line-height:1.5}
 .update-ready{padding:12px;border:1px solid #e4b8c1;border-radius:12px;background:#fff0f2;margin:10px 0}
 .update-ready h4{margin:0 0 7px}
+
+/* v0.3 - enlaces y formularios de corrección */
+.card .linklike{display:inline-block;margin-top:5px;min-height:38px}
+.card .btn.small{padding:8px 10px;white-space:nowrap}
+.card .row{min-width:0}
+.card .row>*{min-width:0}
