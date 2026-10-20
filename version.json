@@ -1,5 +1,5 @@
 {
-  "version": "0.9.4",
+  "version": "0.9.5",
   "release": "2026-10-20",
-  "notes": "Detalle de conciliación por movimiento en Gerencia; conserva IndexedDB y la importación de Excel."
+  "notes": "Ajuste auditable de existencias iniciales en Almacén y cisterna pendiente (DEMO)."
 }

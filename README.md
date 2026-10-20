@@ -26,3 +26,6 @@ Selector de perfiles en cabecera sin pasar por Ajustes. No cambia los identifica
 ## v0.9.4
 - Gerencia: detalle de conciliación cronológica por movimiento con fecha, vehículo, tanque, litros, estado y motivo pendiente.
 - Solo lectura; no modifica las existencias ni la base local del operario.
+
+## v0.9.5
+En Almacén > Más se permite ajustar existencias de vehículos, dejando la cisterna desconocida. El ajuste conserva el historial anterior y queda auditado. Las cargas con cisterna pendiente no descuentan de un saldo inventado, por lo que la conciliación real sigue pendiente. DEMO: no usar como inventario oficial.
