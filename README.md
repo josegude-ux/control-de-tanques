@@ -13,3 +13,6 @@
 - Sustituye los doce archivos en GitHub Pages y actualiza a v0.9.0.
 - Solo DEMO. No hay permisos reales, sincronización ni tiempos protegidos. Los perfiles no son un sistema de seguridad.
 - No utilizar con datos reales.
+
+## v0.9.1
+Comparación canónica de movimientos importados, con detalle de campos discrepantes. No borra ni migra IndexedDB. Las incidencias históricas permanecen en el registro.

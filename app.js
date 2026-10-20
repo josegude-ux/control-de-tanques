@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.1';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -328,6 +328,16 @@ function managerPage(){
  ${card(`<h3>Comunicar cargas al repartidor · Pruebas</h3><p class="hint">Se exportan únicamente cargas conciliadas de Almacén. No incluye duraciones ni datos reales. Si no hay cargas conciliadas, no se generará archivo.</p><label class="field">Vehículo<select id="handoffVehicle"><option value="camion">Camión</option><option value="furgoneta">Furgoneta</option></select></label>${action('Generar Excel de cargas','export-handoff')}`)}
  ${action('Descargar copia JSON','backup',true)}`;
 }
+// Comparación canónica: no depende del orden de las propiedades ni de metadatos adicionales.
+// Los cambios reales en campos del movimiento siguen generando incidencia.
+const MOVEMENT_FIELDS=['id','type','vehicle','tank','client','dest','litres','loss','time','journalId','date','role'];
+function movementDifferences(a,b){
+ return MOVEMENT_FIELDS.filter(k=>{
+  const x=a[k],y=b[k];
+  if(k==='litres'||k==='loss'||k==='tank')return !(Number.isFinite(Number(x))&&Number.isFinite(Number(y))&&Math.abs(Number(x)-Number(y))<0.000001);
+  return String(x??'')!==String(y??'');
+ });
+}
 async function importManagerFile(file){
  if(state.role!=='gerencia'){toast('Selecciona la vista Gerencia (demo)');return}
  if(!file.name.toLowerCase().endsWith('.xlsx')){toast('Selecciona un archivo XLSX');return}
@@ -337,7 +347,7 @@ async function importManagerFile(file){
   const accepted=[];const notices=[...parsed.issues.map(x=>({file:file.name,id:x.id,reason:x.reason}))];
   for(const m of parsed.movements){
    const prior=g.movements[m.id];
-   if(prior){if(JSON.stringify(prior)!==JSON.stringify(m)){issues++;notices.push({file:file.name,id:m.id,reason:'ID existente con contenido diferente'})}else duplicates++;}
+   if(prior){const changed=movementDifferences(prior,m);if(changed.length){issues++;notices.push({file:file.name,id:m.id,reason:'ID existente con contenido diferente (campos: '+changed.join(', ')+')'})}else duplicates++;}
    else{accepted.push(m);added++;}
   }
   issues+=parsed.issues.length;

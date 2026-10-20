@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0",
+  "version": "0.9.1",
   "release": "2026-10-20",
-  "notes": "Apertura de existencias provisionales en Reparto, pendiente de conciliación. No suma cargas de Gerencia sobre apertura provisional."
+  "notes": "Comparación canónica de movimientos importados; incidencias con campos discrepantes. Conserva IndexedDB local."
 }
