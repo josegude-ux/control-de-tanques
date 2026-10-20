@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.3';
+const APP_VERSION='0.9.4';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -256,7 +256,15 @@ function reconciliationPanel(g){
  const overview=card(`<h3>Conciliación cronológica</h3><div class="row"><span>Movimientos conciliados</span><b>${r.accepted}</b></div><div class="row"><span>Movimientos pendientes</span><b>${r.pending}</b></div><p class="hint">Orden cronológico de los archivos importados. Al recibir más Excel se recalcula todo. Las cantidades no son saldos oficiales hasta comprobar los registros de apertura, cargas y recepciones de fábrica.</p>${!r.ready?'<div class="notice">Introduce los saldos iniciales para activar la simulación de conciliación.</div>':''}`);
  const balanceCard=tanks?card(`<h3>Saldo calculado · No oficial</h3><div class="row"><span>Cisterna principal</span><b>${fmt(tanks.cisterna)} L</b></div>${['camion','furgoneta'].map(v=>`<h4>${v==='camion'?'Camión':'Furgoneta'} ${r.problems.some(p=>p.vehicle===v)?'· Pendiente':''}</h4>${tanks[v].map((n,i)=>`<div class="row"><span>Tanque ${i+1}</span><b>${fmt(n)} L</b></div>`).join('')}`).join('')}<p class="hint">Si hay incidencias, los saldos afectados solo reflejan movimientos anteriores validados, no el inventario actual.</p>`):'';
  const problemCard=r.problems.length?card(`<h3>Movimientos pendientes</h3>${r.problems.slice(0,15).map(x=>`<p class="compact"><b>${esc(x.vehicle||'')}, tanque ${Number(x.tank)||'—'}</b> · ${esc(x.reason)} <span class="muted mono">${esc(String(x.id).slice(0,10))}</span></p>`).join('')}${r.problems.length>15?`<p class="hint">Y ${r.problems.length-15} incidencias más.</p>`:''}`):'';
- return overview+openingCard+balanceCard+problemCard;
+ const movements=Object.values(g.movements||{}).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)||String(a.id).localeCompare(String(b.id)));
+ const detailCard=card(`<h3>Detalle de conciliación por movimiento</h3><p class="hint">Registro de auditoría local de pruebas. No confirma recepciones reales ni modifica existencias del operario.</p>${movements.length?movements.map(m=>{
+  const result=r.results[m.id]||{status:'pendiente',reason:'Sin evaluar'};
+  const validTime=Number.isFinite(Date.parse(m.time))?new Date(m.time).toLocaleString('es-ES'):'Fecha no válida';
+  const status=result.status==='conciliado'?'Conciliado':'Pendiente';
+  const vehicle=m.vehicle==='camion'?'Camión':m.vehicle==='furgoneta'?'Furgoneta':String(m.vehicle||'—');
+  return `<div class="audit-movement"><div class="row"><b>${esc(String(m.type||'Movimiento'))} · ${esc(vehicle)} · Tanque ${esc(String(m.tank??'—'))}</b><strong>${esc(status)}</strong></div><div class="row"><span>${esc(validTime)}</span><b>${fmt(Number(m.litres)||0)} L</b></div>${result.reason?`<p class="hint">${esc(result.reason)}</p>`:''}<p class="hint mono">ID: ${esc(String(m.id||'—'))}</p></div>`;
+ }).join(''):'<p class="hint">Todavía no hay movimientos importados.</p>'}`);
+ return overview+openingCard+balanceCard+problemCard+detailCard;
 }
 async function saveOpening(){
  const n=id=>{const field=el(id);if(!field||field.value.trim()==='')return NaN;return Number(field.value)};

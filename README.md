@@ -22,3 +22,7 @@ La comparación de movimientos con igual ID ignora journalId (metadato de jornad
 
 ## v0.9.3
 Selector de perfiles en cabecera sin pasar por Ajustes. No cambia los identificadores de IndexedDB ni el formato Excel. Se mantienen los datos locales del mismo origen web.
+
+## v0.9.4
+- Gerencia: detalle de conciliación cronológica por movimiento con fecha, vehículo, tanque, litros, estado y motivo pendiente.
+- Solo lectura; no modifica las existencias ni la base local del operario.
