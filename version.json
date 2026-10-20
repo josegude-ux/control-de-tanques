@@ -1,5 +1,5 @@
 {
-  "version": "0.9.13",
+  "version": "0.9.14",
   "release": "2026-10-20",
-  "notes": "Planificación semanal local de Gerencia y menú visual de navegadores."
+  "notes": "Planificación rápida por selección global de clientes, litros y vehículo por entrega."
 }

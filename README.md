@@ -11,3 +11,6 @@ Subir todos los archivos al repositorio sin eliminar la app ni los datos del sit
 - Advertencia antes de editar o quitar entregas ya exportadas.
 - Selector inferior visual para Waze, Google Maps y Apple Maps, siempre pregunta.
 - Los perfiles existentes permanecen en IndexedDB, sin migraciones destructivas.
+
+
+v0.9.14: planificación rápida en dos pasos, selección global por día habitual, litros y vehículo por cliente; mantiene plan semanal y Excel existente.
