@@ -1,5 +1,5 @@
 {
-  "version": "0.9.16",
+  "version": "0.9.17",
   "release": "2026-10-20",
-  "notes": "Recepción de planificación Excel por vehículo, control de versiones y consulta de entregas"
+  "notes": "Descargas conectadas a planificación, pendientes y entregas no planificadas"
 }

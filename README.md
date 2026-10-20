@@ -1,5 +1,1 @@
-# Control de Tanques v0.9.16 · DEMOSTRACIÓN
-
-Nueva opción en Reparto > Más > Recibir planificación. Importa exclusivamente los Excel semanales de planificación exportados por Gerencia en Control de Tanques. Separa camión/furgoneta, muestra las entregas agrupadas por fecha, impide duplicados de misma versión y permite sustituir una semana con una versión posterior previa confirmación.
-
-No modifica existencias, cargas, descargas ni clientes. El enlace con el formulario de descarga y la importación de catálogo completo están pendientes. Los perfiles son simulaciones locales, no accesos seguros. No borrar la app ni los datos del navegador durante la actualización.
+Control de Tanques v0.9.17 · DEMO. Reparto: pendientes por fecha y vehículo, iniciar descarga planificada, retirarla de pendientes al finalizar, registrar urgencias y adelantos. No altera existencias al importar planes. No usar para operaciones reales sin pruebas. El catálogo completo de Reparto sigue pendiente.
