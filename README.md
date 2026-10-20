@@ -1,19 +1,19 @@
-# Control de Tanques — v0.7.0 (demostración)
+# Control de Tanques v0.8.0 — espacios locales independientes (demo)
 
-Actualización del proyecto v0.6, **sin eliminar datos de IndexedDB**.
+## Qué cambia
+- Almacén, Reparto y Gerencia guardan sus estados por separado en IndexedDB, incluso si se prueban en el mismo iPhone.
+- Al actualizar desde v0.7, se preserva intacta la clave `app` con el estado anterior. Se crean tres espacios nuevos en una transacción.
+- Reparto conserva sus existencias, visitas, jornadas y cargas ya recibidas. Los identificadores de cargas locales anteriores se registran como aplicados para no duplicarlos.
+- Almacén conserva sus registros de carga y reconstruye su saldo **de demostración** desde valores iniciales ficticios y sus cargas. Esto puede no coincidir con el saldo de Reparto; es deliberado.
+- Gerencia conserva los Excel ya importados y los saldos iniciales de conciliación.
+- «Descargar copia JSON» guarda los tres espacios de datos de prueba; «Reiniciar datos ficticios» afecta solo al espacio actual.
 
-## Procedimiento de pruebas
-1. Cambiar a **Almacén**, registrar carga ficticia con contador confirmado y enviar jornada Excel.
-2. Cambiar a **Gerencia (demo)**, importar Excel de Almacén; configurar saldos iniciales coherentes para que las cargas queden conciliadas.
-3. En **Gerencia → Comunicar cargas al repartidor**, elegir vehículo y generar XLSX de traspaso.
-4. En **Reparto → Más → Recibir cargas de Gerencia**, importar el XLSX. Cada carga con ID único se aplica **una sola vez**; las cargas que no cuadren con el stock local quedan pendientes.
-5. Repetir la importación: debe mostrar duplicados y NO cambiar los litros.
+## Precauciones
+1. **Antes de actualizar**, descarga la copia JSON de v0.7. No borres el navegador ni el icono del escritorio.
+2. Sube los 12 archivos a GitHub Pages. La versión instalada debe mostrar 0.8.0.
+3. Comprueba los saldos y visitas de Reparto, las cargas de Almacén y los Excel de Gerencia.
+4. Cambiar de perfil no es una medida de seguridad. No usar datos reales.
+5. La copia JSON de esta versión aún es **solo exportación**, no restauración. Consérvala como respaldo.
+6. La v0.8 **no incorpora sincronización de Gerencia**. Sigue siendo local de pruebas, sin permisos reales ni control cifrado de tiempos.
 
-## Limitaciones importantes
-- Prototipo local y **sin autenticación**. No subir ni importar datos reales.
-- En un mismo dispositivo, los perfiles demostrativos comparten almacenamiento y pueden reflejar ya las cargas registradas por Almacén. Para probar recepción real usar otro navegador/dispositivo con existencias iniciales compatibles, sin borrar datos anteriores.
-- Traspasos exportan las **cargas conciliadas** existentes, no un saldo absoluto autorizado.
-- Las incidencias de conciliación deben revisarse. No se sobrescriben existencias ni se ignoran duplicados.
-- El XLSX **no está firmado criptográficamente**. No usar con datos empresariales sin seguridad adicional.
-- Sin base compartida de Gerencia, cifrado de tiempos ni control de permisos. Todo sigue siendo ficticio.
-- Para actualizar GitHub Pages, subir los 12 archivos a la raíz del repositorio; conservar el mismo origen URL y no borrar datos Safari.
+**No se debe interpretar el saldo ficticio de Almacén como inventario físico verificado.**

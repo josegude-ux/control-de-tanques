@@ -1,1 +1,5 @@
-{"version":"0.7.0","release":"2026-10-20","notes":"Traspaso de cargas Gerencia a Reparto mediante Excel de pruebas; duplicados y pendientes."}
+{
+  "version": "0.8.0",
+  "release": "2026-10-20",
+  "notes": "Espacios de datos locales separados para Almacén, Reparto y Gerencia; migración conservadora y copia JSON de los perfiles."
+}
