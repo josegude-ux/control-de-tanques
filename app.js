@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.7';
+const APP_VERSION='0.9.9';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -438,7 +438,15 @@ async function saveCustomer(){
  const previous=customers.find(x=>x.id===editingCustomer);
  const record={id:previous?.id||uid(),nombre,poblacion,tanques250,tanques500,tanques:tanques250+tanques500,valvula:el('customerValve').value,permiso:el('customerPermit').value,cierre:el('customerClosed').value,reparto,updatedAt:now()};
  if(previous){delete previous.prevision;Object.assign(previous,record)}else customers.push(record);
- editingCustomer=null;await persist();toast('Cliente guardado en Gerencia (DEMO)');
+ // Guardar la colección en el perfil de Gerencia, incluso cuando antes no existía.
+ state.customers=customers;
+ try {
+  await write();
+  const verified=await dbGet(profileKeys.gerencia);
+  if(!verified?.customers?.some(x=>x.id===record.id))throw new Error('No se pudo verificar el cliente guardado');
+  editingCustomer=null;render();toast('Cliente guardado en Gerencia (DEMO)');
+ }catch(err){console.error('Guardado de cliente',err);toast('Error al guardar el cliente. No se ha confirmado el registro.');}
+
 }
 
 function render(){navbar();const pages={inicio:home,carga:loadPage,visita:visitPage,historial:historyPage,admin:adminPage,jornada:journalPage,gerencia:managerPage,clientes:customerPage};el('screen').innerHTML=pages[state.page]();}

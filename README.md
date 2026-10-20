@@ -1,10 +1,5 @@
-# Control de Tanques v0.9.8 — DEMO
+Control de Tanques v0.9.9 (DEMO)
 
-Mejoras del catálogo local de Gerencia:
-- Tanques de 250 L y 500 L por separado y capacidad calculada.
-- Tipo de válvula automática o manual por cliente.
-- Días de reparto más compactos.
-- Eliminación de la previsión de litros de la ficha; se definirá en la planificación de cada entrega (todavía no implementada).
-- Clientes existentes se conservan; las capacidades antiguas se dejan pendientes de revisión, sin suponer su tamaño.
+Corrección del catálogo: los clientes nuevos ahora se asignan al estado local de Gerencia antes de persistir en IndexedDB. Se verifica la lectura después del guardado; el mensaje de éxito solo aparece tras comprobarlo. No reinicia ni migra las existencias, cargas, visitas o importaciones existentes.
 
-Conserva los datos IndexedDB del navegador. Sigue siendo una demostración sin sincronización real.
+Actualizar todos los archivos del repositorio sin borrar los datos de Safari. Probar con un cliente y cerrar/reabrir la PWA.
