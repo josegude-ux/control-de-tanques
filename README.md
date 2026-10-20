@@ -1,5 +1,5 @@
-Control de Tanques v0.9.15 · DEMO LOCAL
+# Control de Tanques v0.9.16 · DEMOSTRACIÓN
 
-Cambios: selección de vehículo al inicio de la planificación rápida; clientes seleccionados asignados al vehículo; edición individual posterior; menú Visita renombrado a Descarga. No modifica estructura de datos locales.
+Nueva opción en Reparto > Más > Recibir planificación. Importa exclusivamente los Excel semanales de planificación exportados por Gerencia en Control de Tanques. Separa camión/furgoneta, muestra las entregas agrupadas por fecha, impide duplicados de misma versión y permite sustituir una semana con una versión posterior previa confirmación.
 
-Limitaciones: la recepción de planificación en Reparto todavía no está implementada. Los perfiles son de prueba, no permisos seguros. Hacer copia JSON antes de actualizar.
+No modifica existencias, cargas, descargas ni clientes. El enlace con el formulario de descarga y la importación de catálogo completo están pendientes. Los perfiles son simulaciones locales, no accesos seguros. No borrar la app ni los datos del navegador durante la actualización.

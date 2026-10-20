@@ -1,5 +1,5 @@
 {
-  "version": "0.9.15",
+  "version": "0.9.16",
   "release": "2026-10-20",
-  "notes": "Vehículo elegido antes de seleccionar clientes; entrada de litros por lote y menú Descarga."
+  "notes": "Recepción de planificación Excel por vehículo, control de versiones y consulta de entregas"
 }
