@@ -65,3 +65,6 @@ html, body { max-width:100%; }
 .card .btn.small{padding:8px 10px;white-space:nowrap}
 .card .row{min-width:0}
 .card .row>*{min-width:0}
+
+/* v0.9.3: selector accesible desde la cabecera */
+.role-switch{position:relative;flex:none}.role-picker{position:absolute;right:0;top:calc(100% + 5px);z-index:40;background:white;color:#272529;border:1px solid #c8a3a9;border-radius:10px;padding:12px;min-width:190px;box-shadow:0 6px 18px #0002}.role-picker[hidden]{display:none!important}

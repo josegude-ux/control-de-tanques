@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2",
+  "version": "0.9.3",
   "release": "2026-10-20",
-  "notes": "Ignora diferencias exclusivas de journalId al detectar duplicados; conserva la detección de cambios operativos y datos IndexedDB."
+  "notes": "Selector de perfiles desde la cabecera. Conserva IndexedDB y las importaciones de v0.9.2."
 }

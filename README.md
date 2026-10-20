@@ -19,3 +19,6 @@ Comparación canónica de movimientos importados, con detalle de campos discrepa
 
 ## v0.9.2
 La comparación de movimientos con igual ID ignora journalId (metadato de jornada). Diferencias en litros, tanque, fecha u otros campos operativos siguen generando incidencia. No borra IndexedDB ni incidencias anteriores.
+
+## v0.9.3
+Selector de perfiles en cabecera sin pasar por Ajustes. No cambia los identificadores de IndexedDB ni el formato Excel. Se mantienen los datos locales del mismo origen web.
