@@ -1,5 +1,5 @@
 {
-  "version": "0.8.0",
+  "version": "0.9.0",
   "release": "2026-10-20",
-  "notes": "Espacios de datos locales separados para Almacén, Reparto y Gerencia; migración conservadora y copia JSON de los perfiles."
+  "notes": "Apertura de existencias provisionales en Reparto, pendiente de conciliación. No suma cargas de Gerencia sobre apertura provisional."
 }
