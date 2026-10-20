@@ -1,5 +1,5 @@
 {
-  "version": "0.9.12",
+  "version": "0.9.13",
   "release": "2026-10-20",
-  "notes": "Ubicación opcional por dirección o enlace de Google Maps y acceso desde fichas de clientes."
+  "notes": "Planificación semanal local de Gerencia y menú visual de navegadores."
 }
