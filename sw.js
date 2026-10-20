@@ -1,6 +1,6 @@
 // Cache del shell; no borrar nunca IndexedDB ni datos de usuario.
-const CACHE='control-tanques-demo-v099-reconciliation';
-const FILES=['./','./index.html','./styles.css?v=0.9.9','./app.js?v=0.9.9','./xlsx-local.js?v=0.9.9','./xlsx-import-local.js?v=0.9.9','./xlsx-transfer-local.js?v=0.9.9','./manifest.webmanifest','./icon.svg','./mahou-logo.png','./version.json'];
+const CACHE='control-tanques-demo-v0910-reconciliation';
+const FILES=['./','./index.html','./styles.css?v=0.9.10','./app.js?v=0.9.10','./xlsx-local.js?v=0.9.10','./xlsx-import-local.js?v=0.9.10','./xlsx-transfer-local.js?v=0.9.10','./manifest.webmanifest','./icon.svg','./mahou-logo.png','./version.json'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)))});
 self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

@@ -1,5 +1,5 @@
 {
-  "version": "0.9.9",
+  "version": "0.9.10",
   "release": "2026-10-20",
-  "notes": "Ficha de clientes: tanques 250/500 L, válvula, días compactos y previsión fuera del catálogo (DEMO)."
+  "notes": "Clientes compactos, buscador, duplicados confirmados, días laborables y valores por defecto."
 }
