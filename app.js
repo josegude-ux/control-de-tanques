@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.11';
+const APP_VERSION='0.9.12';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -402,6 +402,30 @@ async function importManagerFile(file){
 
 // Catálogo local de Gerencia: no se transmite aún a Reparto.
 let editingCustomer=null;
+// Coordenadas de enlaces Google Maps comunes; enlaces cortos se abren directamente en Google Maps.
+function customerCoordinates(raw){
+ try{
+  const u=new URL(raw); if(!['https:','http:'].includes(u.protocol))return null;
+  const q=u.searchParams.get('q')||u.searchParams.get('query')||'';
+  const patterns=[/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/, /[?&](?:q|query)=(-?\d{1,2}\.\d+)%2C(-?\d{1,3}\.\d+)/i, /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/, /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/];
+  for(const candidate of [u.href,q])for(const pat of patterns){const m=candidate.match(pat);if(m){const lat=Number(m[1]),lng=Number(m[2]);if(Math.abs(lat)<=90&&Math.abs(lng)<=180)return `${lat},${lng}`;}}
+ }catch{}return null;
+}
+function openCustomerLocation(id){
+ const c=(state.customers||[]).find(x=>x.id===id);if(!c)return;
+ const address=String(c.direccion||'').trim(),raw=String(c.ubicacionUrl||'').trim();
+ const coords=customerCoordinates(raw),destination=coords||[address,c.poblacion].filter(Boolean).join(', ');
+ if(!address&&!raw){alert('Este cliente todavía no tiene ubicación. Pulsa Editar para añadirla.');return;}
+ const choice=prompt('Abrir ubicación de '+c.nombre+' en:\n1 · Google Maps\n2 · Waze\n3 · Apple Maps\n\nEscribe 1, 2 o 3:','1');
+ if(choice===null)return;
+ if(!['1','2','3'].includes(choice.trim())){alert('Elige 1, 2 o 3.');return;}
+ if(choice.trim()==='1'){
+  let link='';try{const u=new URL(raw);if(u.protocol==='https:'&&(/(^|\.)google\.[a-z.]+$/.test(u.hostname)||['maps.app.goo.gl','goo.gl'].includes(u.hostname)))link=u.href;}catch{}
+  location.href=link||'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(destination);return;
+ }
+ if(!destination){alert('Para abrir Waze o Apple Maps añade una dirección, o un enlace de Maps que contenga coordenadas.');return;}
+ location.href=choice.trim()==='2'?'https://waze.com/ul?q='+encodeURIComponent(destination)+'&navigate=yes':'https://maps.apple.com/?daddr='+encodeURIComponent(destination);
+}
 const WEEKDAYS=['Lunes','Martes','Miércoles','Jueves','Viernes'];
 let customerSearch='';
 function normalizeCustomer(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLocaleLowerCase('es');}
@@ -416,6 +440,9 @@ function customerPage(){
  card(`<h3>${c.id?'Editar cliente':'Nuevo cliente'}</h3><form id="customerForm" class="form customer-form">
  <label class="field">Nombre<input id="customerName" maxlength="120" required value="${esc(c.nombre||'')}"></label>
  <label class="field">Población<input id="customerTown" maxlength="100" required value="${esc(c.poblacion||'')}"></label>
+ <label class="field">Dirección (opcional)<input id="customerAddress" maxlength="250" autocomplete="street-address" placeholder="Calle, número, localidad" value="${esc(c.direccion||'')}"></label>
+ <label class="field">Enlace de Google Maps (opcional)<input id="customerMapUrl" type="url" inputmode="url" maxlength="1200" placeholder="https://maps.app.goo.gl/…" value="${esc(c.ubicacionUrl||'')}"></label>
+ <p class="hint">Puedes introducir una dirección, un enlace o ambos. El enlace exacto se usará primero en Google Maps.</p>
  <div class="customer-tanks"><label class="field">Tanques de 250 L<input id="customerTanks250" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="30" step="1" required value="${count250}"></label><label class="field">Tanques de 500 L<input id="customerTanks500" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="30" step="1" required value="${count500}"></label></div>
  <p class="customer-capacity" id="customerCapacity">Capacidad instalada: ${fmt(count250*250+count500*500)} L</p>
  ${c.id&&c.tanques250==null&&c.tanques500==null?'<p class="hint">Ficha anterior: revisa y especifica las capacidades de los tanques antes de guardar.</p>':''}
@@ -428,12 +455,14 @@ function customerPage(){
  (customers.length?customers.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(x=>{
  const hasCounts=x.tanques250!=null&&x.tanques500!=null;
  const tankText=hasCounts?`${x.tanques250} × 250 L · ${x.tanques500} × 500 L · Capacidad: ${fmt(x.tanques250*250+x.tanques500*500)} L`:`${x.tanques||'?'} tanque(s) · Capacidades pendientes de revisar`;
- return `<div class="card customer-item" data-search="${esc(normalizeCustomer(x.nombre+' '+x.poblacion))}"><div class="customer-info"><strong>${esc(x.nombre)}</strong> · ${esc(x.poblacion)} · ${tankText}</div><div class="customer-meta">${x.valvula==='manual'?'Manual':x.valvula==='automatica'?'Automática':'Válvula pendiente'} · ${x.permiso==='si'?'Con permiso':'Sin permiso'} · Reparto: ${esc((x.reparto||[]).map(d=>({Lunes:'Lu',Martes:'Ma',Miércoles:'Mi',Jueves:'Ju',Viernes:'Vi',Sábado:'Sa',Domingo:'Do'}[d]||d)).join(', ')||'Sin asignar')}</div><div class="customer-buttons"><button class="btn secondary small" data-act="edit-customer" data-id="${esc(x.id)}">Editar</button><button class="btn danger small" data-act="delete-customer" data-id="${esc(x.id)}">Eliminar</button></div></div>`;
+ return `<div class="card customer-item" data-search="${esc(normalizeCustomer(x.nombre+' '+x.poblacion))}"><div class="customer-info"><strong>${esc(x.nombre)}</strong> · ${esc(x.poblacion)} · ${tankText}</div><div class="customer-meta">${x.valvula==='manual'?'Manual':x.valvula==='automatica'?'Automática':'Válvula pendiente'} · ${x.permiso==='si'?'Con permiso':'Sin permiso'} · Reparto: ${esc((x.reparto||[]).map(d=>({Lunes:'Lu',Martes:'Ma',Miércoles:'Mi',Jueves:'Ju',Viernes:'Vi',Sábado:'Sa',Domingo:'Do'}[d]||d)).join(', ')||'Sin asignar')}</div><div class="customer-buttons"><button class="btn secondary small customer-map" data-act="map-customer" data-id="${esc(x.id)}" aria-label="Abrir ubicación de ${esc(x.nombre)}" title="Ubicación">📍</button><button class="btn secondary small" data-act="edit-customer" data-id="${esc(x.id)}">Editar</button><button class="btn danger small" data-act="delete-customer" data-id="${esc(x.id)}">Eliminar</button></div></div>`;
  }).join(''):'<div class="empty">Todavía no hay clientes registrados.</div>')+'</div>';
 }
 async function saveCustomer(){
  if(state.role!=='gerencia')return;
  const nombre=el('customerName').value.trim(),poblacion=el('customerTown').value.trim(),tanques250=Number(el('customerTanks250').value),tanques500=Number(el('customerTanks500').value);
+ const direccion=el('customerAddress').value.trim(),ubicacionUrl=el('customerMapUrl').value.trim();
+ if(ubicacionUrl){try{const u=new URL(ubicacionUrl);if(u.protocol!=='https:'||!(/(^|\.)google\.[a-z.]+$/.test(u.hostname)||['maps.app.goo.gl','goo.gl'].includes(u.hostname)))throw Error();}catch{return toast('Introduce un enlace válido de Google Maps (https://…)');}}
  const reparto=[...document.querySelectorAll('input[name="customerDay"]:checked')].map(x=>x.value);
  if(!nombre||!poblacion||![tanques250,tanques500].every(n=>Number.isInteger(n)&&n>=0&&n<=30)||tanques250+tanques500<1||!reparto.length)return toast('Indica al menos un tanque y un día de reparto; revisa los datos');
  const customers=state.customers??[];
@@ -442,7 +471,7 @@ async function saveCustomer(){
  const similar=customers.filter(x=>x.id!==previous?.id&&!same.includes(x)&&normalizeCustomer(x.nombre)===normalizeCustomer(nombre));
  if(same.length&&!confirm(`Ya existe ${same.length===1?'un cliente':'más de un cliente'} con el mismo nombre y población: ${same.map(x=>x.nombre+' ('+x.poblacion+')').join(', ')}.\n\n¿Quieres crear o guardar igualmente este registro?`))return;
  if(!same.length&&similar.length&&!confirm(`Hay un cliente con el mismo nombre en otra población: ${similar.map(x=>x.nombre+' ('+x.poblacion+')').join(', ')}.\n\n¿Quieres continuar?`))return;
- const record={id:previous?.id||uid(),nombre,poblacion,tanques250,tanques500,tanques:tanques250+tanques500,valvula:el('customerValve').value,permiso:el('customerPermit').value,cierre:el('customerClosed').value,reparto,updatedAt:now()};
+ const record={id:previous?.id||uid(),nombre,poblacion,direccion,ubicacionUrl,tanques250,tanques500,tanques:tanques250+tanques500,valvula:el('customerValve').value,permiso:el('customerPermit').value,cierre:el('customerClosed').value,reparto,updatedAt:now()};
  if(previous){delete previous.prevision;Object.assign(previous,record)}else customers.push(record);
  // Guardar la colección en el perfil de Gerencia, incluso cuando antes no existía.
  state.customers=customers;
@@ -523,7 +552,7 @@ async function reopenVisit(id){
 }
 async function finishVisit(){const v=state.openVisit;if(!v?.discharges.length)return toast('Registra al menos una descarga');if(!confirm(`Finalizar visita a ${v.client} con ${v.discharges.length} descargas?`))return;invalidateDraft('reparto');v.ended=now();state.visits.push(v);state.log.push({title:'Visita cerrada',desc:`${v.client} · ${v.discharges.length} descargas · ${fmt(v.discharges.reduce((s,d)=>s+d.liters,0))} L`,at:v.ended});state.openVisit=null;editingId=null;await persist();toast('Visita ficticia guardada')}
 async function backup(){const profiles={};for(const [role,key] of Object.entries(profileKeys))profiles[role]=await dbGet(key);const bytes=new Blob([JSON.stringify({app:'control-de-tanques',phase:'demo-v08',exported:now(),profiles},null,2)],{type:'application/json'});const url=URL.createObjectURL(bytes);const a=document.createElement('a');a.href=url;a.download=`control-tanques-DEMO-perfiles-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='clear-opening'){if(confirm('¿Quitar los saldos iniciales ficticios? Los Excel importados y sus identificadores se conservarán.')){delete managerState().opening;await persist();}return;}if(act==='go-gerencia')return navigate('gerencia');if(act==='go-clientes')return navigate('clientes');if(act==='cancel-customer'){editingCustomer=null;return render()}if(act==='edit-customer'){editingCustomer=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='delete-customer'){const id=e.target.closest('[data-id]')?.dataset.id;const c=(state.customers||[]).find(x=>x.id===id);if(c&&confirm('¿Eliminar el cliente '+c.nombre+' del catálogo local?')){state.customers=state.customers.filter(x=>x.id!==id);if(editingCustomer===id)editingCustomer=null;await persist()}return;}if(act==='export-handoff')return exportHandoff();if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Reiniciar solamente el perfil '+roleNames[state.role]+'? Antes guarda una copia JSON. Los otros perfiles y la copia anterior se mantienen.')){const role=state.role;state=cleanProfile(role);await persist()}}}
+async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='clear-opening'){if(confirm('¿Quitar los saldos iniciales ficticios? Los Excel importados y sus identificadores se conservarán.')){delete managerState().opening;await persist();}return;}if(act==='go-gerencia')return navigate('gerencia');if(act==='go-clientes')return navigate('clientes');if(act==='cancel-customer'){editingCustomer=null;return render()}if(act==='map-customer')return openCustomerLocation(e.target.closest('[data-id]')?.dataset.id);if(act==='edit-customer'){editingCustomer=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='delete-customer'){const id=e.target.closest('[data-id]')?.dataset.id;const c=(state.customers||[]).find(x=>x.id===id);if(c&&confirm('¿Eliminar el cliente '+c.nombre+' del catálogo local?')){state.customers=state.customers.filter(x=>x.id!==id);if(editingCustomer===id)editingCustomer=null;await persist()}return;}if(act==='export-handoff')return exportHandoff();if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Reiniciar solamente el perfil '+roleNames[state.role]+'? Antes guarda una copia JSON. Los otros perfiles y la copia anterior se mantienen.')){const role=state.role;state=cleanProfile(role);await persist()}}}
 async function handleChange(e){if(e.target.id==='vehicle'||e.target.id==='loadVehicle'){state.vehicle=e.target.value;await persist()}if(e.target.id==='chooseRole'){await changeProfile(e.target.value)}if(e.target.id==='loadVehicle')render();if(e.target.id==='journalDate'){journalDate=e.target.value;render()}if(e.target.id==='journalWorker'){journalWorker=e.target.value.trim();}if(e.target.id==='managerFile'&&e.target.files?.[0])await importManagerFile(e.target.files[0]);if(e.target.id==='handoffFile'&&e.target.files?.[0])await receiveHandoff(e.target.files[0]);}
 document.addEventListener('focusin',e=>{if(e.target?.id==='customerTanks250'||e.target?.id==='customerTanks500')e.target.select();});
 document.addEventListener('input',e=>{if(e.target?.id==='customerSearch'){customerSearch=e.target.value;document.querySelectorAll('#customerList .customer-item').forEach(item=>{item.hidden=!item.dataset.search.includes(normalizeCustomer(customerSearch));});}if(e.target?.id==='customerTanks250'||e.target?.id==='customerTanks500'){const a=Number(el('customerTanks250')?.value||0),b=Number(el('customerTanks500')?.value||0);const output=el('customerCapacity');if(output)output.textContent='Capacidad instalada: '+fmt(a*250+b*500)+' L';}});
@@ -567,7 +596,7 @@ async function applyUpdate(){
     }
     // Invalidar la caché de recursos de la versión anterior antes de recargar.
     if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')).map(k=>caches.delete(k)))}
-    const next=new URL(location.href); next.searchParams.set("app_version", "0.9.11"); location.replace(next.href);
+    const next=new URL(location.href); next.searchParams.set("app_version", "0.9.12"); location.replace(next.href);
   }catch(err){console.error(err);updating=false;toast('No se completó la actualización. Vuelve a intentarlo.');}
 }
 async function setupUpdates(){

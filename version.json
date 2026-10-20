@@ -1,5 +1,5 @@
 {
-  "version": "0.9.11",
+  "version": "0.9.12",
   "release": "2026-10-20",
-  "notes": "Corrige la versión interna y mejora la recarga de actualizaciones, manteniendo mejoras de clientes."
+  "notes": "Ubicación opcional por dirección o enlace de Google Maps y acceso desde fichas de clientes."
 }
