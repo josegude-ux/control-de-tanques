@@ -26,3 +26,12 @@ Extrae los archivos del ZIP y súbelos a la raíz de `control-de-tanques` en Git
 - Exportación/importación Excel, auditoría de correcciones, reinicio excepcional del contador.
 - Usuarios con permisos reales, cifrado de tiempos y base compartida de Gerencia.
 - PWA y uso offline completos con el logo descargado localmente.
+
+## v0.2.2: actualización desde la aplicación
+- **Más → Actualizaciones**: versión instalada, Buscar actualizaciones, Actualizar ahora.
+- `version.json` publica la versión actual y se consulta por red sin caché.
+- Comprueba al abrir y al volver al primer plano (máximo una vez cada seis horas).
+- Actualizar ahora renueva archivos de la PWA y recarga tras confirmación; muestra advertencia si hay una visita abierta.
+- Conserva IndexedDB `cdt_demo_v1` sin migraciones, sin borrar movimientos locales.
+- Sigue siendo un prototipo: comprueba la primera actualización en un dispositivo de prueba.
+- En futuras versiones: actualizar version.json, APP_VERSION en app.js y CACHE en sw.js al publicar.

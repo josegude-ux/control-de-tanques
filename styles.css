@@ -55,3 +55,7 @@ html, body { max-width:100%; }
  .brand-logo-wrap { width:42px; min-width:42px; max-width:42px; height:42px; flex-basis:42px; padding:5px; }
  .brand-logo, img.brand-logo { width:32px !important; height:32px !important; max-width:32px !important; max-height:32px !important; }
 }
+
+.update-info{font-size:13px;color:#6a6062;line-height:1.5}
+.update-ready{padding:12px;border:1px solid #e4b8c1;border-radius:12px;background:#fff0f2;margin:10px 0}
+.update-ready h4{margin:0 0 7px}

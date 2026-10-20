@@ -1,0 +1,5 @@
+{
+  "version": "0.2.2",
+  "release": "2026-10-20",
+  "notes": "Comprobación de versiones y botón Actualizar ahora; sin borrar IndexedDB"
+}

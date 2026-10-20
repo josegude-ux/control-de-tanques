@@ -1,6 +1,9 @@
 'use strict';
 // Prototipo fase 1: datos de demostración. No autentica perfiles ni exporta Excel.
 const STORE='cdt_demo_v1';
+const APP_VERSION='0.2.2';
+const UPDATE_CHECK_MS=6*60*60*1000;
+let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
 let db,state;
 const el=id=>document.getElementById(id);
@@ -30,7 +33,8 @@ function loadPage(){let tanks=state.tanks[state.vehicle];return `<h2 class="head
 function visitPage(){const v=state.openVisit;const available=state.tanks[state.vehicle];if(!v)return `<h2 class="heading">Nueva visita</h2><div class="notice">Usa clientes ficticios. Esta fase no contiene el catálogo real de clientes.</div><form id="visitForm" class="form"><label class="field">Cliente de prueba<select id="client" required><option value="Cervecería Ejemplo">Cervecería Ejemplo</option><option value="Bar de Pruebas">Bar de Pruebas</option></select></label><label class="check"><input id="zeroVisit" type="checkbox" required> He puesto el contador de descarga a cero al llegar al cliente.</label><button class="btn" type="submit">Iniciar visita</button></form>`;
 return `<h2 class="heading">Visita en curso</h2>${card(`<h3>${esc(v.client)}</h3><p class="muted tiny">Inicio: ${showTime(v.started)}</p><div class="row"><span>Descargas registradas</span><b>${v.discharges.length}</b></div><div class="row"><span>Contador acumulado</span><b>${fmt(v.reading)} L</b></div>`)}<form id="dischargeForm" class="form"><label class="field">Tanque de origen del vehículo<select id="sourceTank">${available.map((liters,i)=>`<option value="${i}" ${v.lastSource===i?'selected':''}>Tanque ${i+1} · ${fmt(liters)} L restantes</option>`).join('')}</select></label><label class="field">Tanque del cliente (obligatorio en cada descarga)<select id="destTank" required><option value="">Seleccionar depósito…</option><option value="1">Tanque cliente 1 · 500 L</option><option value="2">Tanque cliente 2 · 500 L</option><option value="3">Tanque cliente 3 · 250 L</option></select></label><label class="field">Nueva lectura acumulada del contador<input type="number" min="0" step="0.01" inputmode="decimal" id="reading" placeholder="Anterior: ${fmt(v.reading)} L" required /></label><p class="hint">Se entregarán los litros correspondientes a la diferencia respecto a la lectura anterior (${fmt(v.reading)} L). El contador es único para todos los tanques.</p><button class="btn" type="submit">Registrar descarga</button></form>${v.discharges.map((d,i)=>card(`<div class="row"><b>Descarga ${i+1}</b><b>${fmt(d.liters)} L</b></div><p class="tiny muted">Vehículo T${d.source+1} → Cliente T${d.dest}</p>`)).join('')}${v.discharges.length?action('Finalizar visita','finish-visit',true):''}<p class="hint">Las correcciones auditadas y los reinicios excepcionales del contador quedan pendientes de la fase 2. No utilizar con datos reales.</p>`}
 function historyPage(){const movements=[...state.log].reverse();return `<h2 class="heading">Historial local</h2><div class="notice">Los movimientos se guardan en este navegador. No se envían a Gerencia y pueden perderse si se borran los datos de Safari.</div>${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}`}
-function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Pendiente: Excel, correcciones auditadas, permisos seguros, cifrado de tiempos, conexión de Gerencia.</p>`)}`}
+const updatePanel=()=>card(`<h3>Actualizaciones</h3><div class="row"><span>Versión instalada</span><b class="mono">${APP_VERSION}</b></div><p class="update-info">La app busca nuevas versiones al abrirse o regresar a primer plano si hay conexión. No se eliminan los datos locales.</p>${action('Buscar actualizaciones','check-update',true)}${updateAvailable?`<div class="update-ready"><h4>Nueva versión disponible</h4><p class="compact">Puedes instalar la nueva versión sin borrar los movimientos de prueba.</p>${action('Actualizar ahora','apply-update')}</div>`:''}<p class="update-info" id="updateStatus">${navigator.onLine?'Para buscar una nueva versión, toca el botón.':'Sin conexión: se mantiene la versión instalada.'}</p>`);
+function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${updatePanel()}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Pendiente: Excel, correcciones auditadas, permisos seguros, cifrado de tiempos, conexión de Gerencia.</p>`)}`}
 function render(){navbar();const pages={inicio:home,carga:loadPage,visita:visitPage,historial:historyPage,admin:adminPage};el('screen').innerHTML=pages[state.page]();}
 async function navigate(page){if(state.openVisit && page==='carga')return toast('Finaliza primero la visita en curso');state.page=page;await persist()}
 async function processLoad(form){const vehicle=el('loadVehicle').value,index=Number(el('loadTank').value),amount=Number(el('loadLiters').value),old=state.tanks[vehicle][index],discard=el('residual').value==='desechar',merma=discard?old:0;const remaining=discard?0:old;if(!el('zeroLoad').checked||!Number.isFinite(amount)||amount<=0||amount+remaining>1000||amount>state.cisterna)return toast('Revisa la cantidad, capacidad, cisterna y confirmación del contador');if(!confirm(`Registrar ${fmt(amount)} L al ${vehicle}, tanque ${index+1}${merma?` y merma de ${fmt(merma)} L`:''}?`))return;
@@ -39,7 +43,58 @@ async function startVisit(){if(state.openVisit)return toast('Ya hay una visita a
 async function discharge(){const v=state.openVisit;if(!v)return;const source=Number(el('sourceTank').value),dest=el('destTank').value,reading=Number(el('reading').value),raw=el('reading').value;const liters=Math.round((reading-v.reading)*100)/100;if(!dest||raw.trim()===''||!Number.isFinite(reading)||liters<=0||liters>state.tanks[v.vehicle][source])return toast('Lectura inválida o litros insuficientes en el tanque');if(!confirm(`Registrar ${fmt(liters)} L desde tanque ${source+1} a tanque cliente ${dest}?`))return;state.tanks[v.vehicle][source]=Math.round((state.tanks[v.vehicle][source]-liters)*100)/100;v.lastSource=source;v.reading=reading;v.discharges.push({id:uid(),source,dest,reading,liters,at:now()});await persist();toast(`Registrados ${fmt(liters)} L. Selecciona otra vez el tanque del cliente.`)}
 async function finishVisit(){const v=state.openVisit;if(!v?.discharges.length)return toast('Registra al menos una descarga');if(!confirm(`Finalizar visita a ${v.client} con ${v.discharges.length} descargas?`))return;v.ended=now();state.visits.push(v);state.log.push({title:'Visita cerrada',desc:`${v.client} · ${v.discharges.length} descargas · ${fmt(v.discharges.reduce((s,d)=>s+d.liters,0))} L`,at:v.ended});state.openVisit=null;await persist();toast('Visita ficticia guardada')}
 function backup(){const bytes=new Blob([JSON.stringify({app:'control-de-tanques',phase:'demo-1',exported:now(),state},null,2)],{type:'application/json'});const url=URL.createObjectURL(bytes);const a=document.createElement('a');a.href=url;a.download=`control-tanques-DEMO-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='backup')return backup();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
+async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
 async function handleChange(e){if(e.target.id==='vehicle'||e.target.id==='loadVehicle'){state.vehicle=e.target.value;await persist()}if(e.target.id==='chooseRole'){state.role=e.target.value;state.page='inicio';await persist()}if(e.target.id==='loadVehicle')render()}
 async function handleSubmit(e){if(!['loadForm','visitForm','dischargeForm'].includes(e.target.id))return;e.preventDefault();if(e.target.id==='loadForm')await processLoad(e.target);if(e.target.id==='visitForm')await startVisit();if(e.target.id==='dischargeForm')await discharge()}
-async function init(){try{db=await openDB();state=await read()||baseline();await write();document.addEventListener('click',e=>handleActions(e).catch(console.error));document.addEventListener('change',e=>handleChange(e).catch(console.error));document.addEventListener('submit',e=>handleSubmit(e).catch(console.error));el('roleButton').addEventListener('click',()=>{state.page='admin';persist()});render();if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(console.warn)}catch(err){el('screen').innerHTML='<div class="notice error">No se puede abrir el almacenamiento local. Comprueba que no estás en navegación privada o que Safari permite datos de sitios web.</div>';console.error(err)}}init();
+async function init(){try{db=await openDB();state=await read()||baseline();await write();document.addEventListener('click',e=>handleActions(e).catch(console.error));document.addEventListener('change',e=>handleChange(e).catch(console.error));document.addEventListener('submit',e=>handleSubmit(e).catch(console.error));el('roleButton').addEventListener('click',()=>{state.page='admin';persist()});render();setupUpdates().catch(console.warn)}catch(err){el('screen').innerHTML='<div class="notice error">No se puede abrir el almacenamiento local. Comprueba que no estás en navegación privada o que Safari permite datos de sitios web.</div>';console.error(err)}}init();
+
+
+// Actualizaciones GitHub Pages: version.json + service worker. Estado IndexedDB intacto.
+function setUpdateStatus(message){const node=el('updateStatus');if(node)node.textContent=message}
+function hasActiveOperation(){return Boolean(state?.openVisit)}
+async function checkForUpdates(manual=false){
+  if(updating)return;
+  if(!navigator.onLine){if(manual)toast('Sin conexión: no se pueden buscar actualizaciones');setUpdateStatus('Sin conexión. Tus datos locales siguen disponibles.');return}
+  lastUpdateCheck=Date.now();
+  try{
+    const resp=await fetch(`./version.json?t=${Date.now()}`,{cache:'no-store'});
+    if(!resp.ok)throw new Error('No se pudo consultar version.json');
+    const remote=await resp.json();
+    if(!/^\d+\.\d+\.\d+$/.test(remote.version))throw new Error('Versión remota inválida');
+    const compare=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){if(x[i]!==y[i])return x[i]-y[i]}return 0};
+    updateAvailable=compare(remote.version,APP_VERSION)>0;
+    if(updateAvailable){setUpdateStatus(`Disponible: v${remote.version}`);toast(`Nueva versión ${remote.version} disponible`);}
+    else {setUpdateStatus(`Tienes la versión más reciente (v${APP_VERSION}).`);if(manual)toast('Ya tienes la última versión')}
+    if(state?.page==='admin')render();
+  }catch(err){console.warn('Error al comprobar actualización:',err);if(manual)toast('No se ha podido comprobar la versión. Inténtalo después.');setUpdateStatus('No se pudo comprobar la versión. La aplicación sigue funcionando.');}
+}
+async function applyUpdate(){
+  if(!updateAvailable){toast('No hay ninguna actualización pendiente');return}
+  if(hasActiveOperation()&&!confirm('Tienes una visita abierta. Es preferible terminarla antes de actualizar. ¿Continuar igualmente?'))return;
+  if(!confirm('¿Aplicar la actualización ahora? Tus registros locales se conservarán.'))return;
+  if(!navigator.onLine){toast('Necesitas conexión para actualizar');return}
+  updating=true;toast('Preparando actualización…');
+  try{
+    if('serviceWorker' in navigator){
+      const reg=await navigator.serviceWorker.getRegistration('./');
+      if(reg){
+        const waitForControl=new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
+        await reg.update();
+        if(reg.waiting){reg.waiting.postMessage({type:'SKIP_WAITING'});await Promise.race([waitForControl,new Promise(r=>setTimeout(r,5000))])}
+      }
+    }
+    // Invalidar la caché de recursos de la versión anterior antes de recargar.
+    if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')).map(k=>caches.delete(k)))}
+    location.reload();
+  }catch(err){console.error(err);updating=false;toast('No se completó la actualización. Vuelve a intentarlo.');}
+}
+async function setupUpdates(){
+  if('serviceWorker' in navigator&&location.protocol==='https:'){
+    try{await navigator.serviceWorker.register('./sw.js')}catch(err){console.warn('Service worker no disponible:',err)}
+  }
+  // Usar siempre versión remota no cacheada. Evitar consultas continuas.
+  setTimeout(()=>checkForUpdates(false),1800);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&Date.now()-lastUpdateCheck>UPDATE_CHECK_MS)checkForUpdates(false);
+  });
+}
