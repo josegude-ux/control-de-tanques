@@ -1,7 +1,7 @@
 'use strict';
 // Prototipo fase 1: datos de demostración. No autentica perfiles ni exporta Excel.
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.4.0';
+const APP_VERSION='0.4.1';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -59,9 +59,9 @@ const updatePanel=()=>card(`<h3>Actualizaciones</h3><div class="row"><span>Versi
 function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Enviar jornada · Excel</h3><p class="hint">Un Excel por fecha y perfil. Funciona sin conexión. Reenvía el mismo archivo cuando ya esté marcado como enviado.</p>${action('Abrir envío de jornada','go-jornada')}`)}${updatePanel()}${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Implementado en demo: correcciones auditadas, reinicio de contador y reapertura de visitas. Excel de jornada en fase de pruebas. Pendiente: importación por Gerencia, control real de tiempos, permisos seguros, cifrado y conexión de Gerencia.</p>`)}`}
 
 // v0.4 · Excel local por día y perfil. No hay identificación auténtica ni control de permisos todavía.
+const localDay=iso=>{if(!iso)return '';const d=new Date(iso);if(Number.isNaN(d.getTime()))return '';return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 let journalDate=localDay(new Date().toISOString());
 let journalWorker='Operario de prueba';
-const localDay=iso=>{if(!iso)return '';const d=new Date(iso);if(Number.isNaN(d.getTime()))return '';return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const journalRole=()=>state.role==='almacen'?'almacen':state.role==='reparto'?'reparto':null;
 const journalKey=(date,role)=>`${date}|${role}`;
 function invalidateDraft(role){if(!state.preparedJournals)return;for(const k of Object.keys(state.preparedJournals))if(k.endsWith('|'+role))delete state.preparedJournals[k];}

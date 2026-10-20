@@ -1,3 +1,7 @@
+## v0.4.1 - Corrección pantalla en blanco
+
+Se corrige un error de inicialización del módulo de jornadas que impedía renderizar el contenido en iPhone. No se modifican el esquema IndexedDB ni los movimientos existentes. Sube todos los archivos, incluidos `xlsx-local.js` y `version.json`. No borres los datos de Safari.
+
 # Control de Tanques · Demo v0.4 · Excel local
 
 ## Novedades
