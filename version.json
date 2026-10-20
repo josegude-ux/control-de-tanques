@@ -1,5 +1,5 @@
 {
-  "version": "0.2.2",
+  "version": "0.2.3",
   "release": "2026-10-20",
-  "notes": "Comprobación de versiones y botón Actualizar ahora; sin borrar IndexedDB"
+  "notes": "Corrige la caché al actualizar; Actualizaciones al principio de Más; conserva datos locales"
 }

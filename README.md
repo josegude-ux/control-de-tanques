@@ -1,3 +1,11 @@
+# Control de Tanques v0.2.3 — Corrección de actualizaciones
+
+Se ha detectado que Safari mostraba la cabecera 0.2.2 con JavaScript anterior en caché. Esta versión utiliza rutas versionadas de `app.js` y `styles.css`, y presenta **Actualizaciones** al principio del menú Más.
+
+**Instalación:** subir todos los archivos descomprimidos a la raíz de la rama `main` en GitHub, sustituyendo los anteriores. No elimines datos de Safari ni desinstales la PWA. Tras publicarse, recarga la aplicación con conexión; si se mantiene antigua, cierra y abre la pestaña, o prueba Safari normal. Los datos de demostración quedan en IndexedDB.
+
+**Estado:** interfaz de pruebas. Aún no incluye Excel, autenticación real ni sincronización de Gerencia.
+
 # Control de Tanques — Demo local v0.2.1 · Logo Mahou local corregido
 
 **Prototipo solo con datos ficticios. No usar con operaciones reales.**
