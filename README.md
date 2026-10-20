@@ -1,26 +1,23 @@
-## v0.4.2 - Corrección pantalla en blanco
-
-Se corrige un error de inicialización del módulo de jornadas que impedía renderizar el contenido en iPhone. No se modifican el esquema IndexedDB ni los movimientos existentes. Sube todos los archivos, incluidos `xlsx-local.js` y `version.json`. No borres los datos de Safari.
-
-# Control de Tanques · Demo v0.4 · Excel local
+# Control de Tanques v0.5 · Importación local de pruebas
 
 ## Novedades
-- **Más → Enviar jornada** en Almacén y Reparto.
-- Archivo `.xlsx` real generado sin conexión y sin dependencias externas (`xlsx-local.js`). Una jornada por fecha y perfil.
-- Compartir con el menú de iOS si está disponible; si no, descargar para compartir desde Archivos.
-- Después del envío, **Marcar jornada como enviada** para bloquear reaperturas y poder **reenviar el mismo Excel**, con identificadores idénticos.
-- Hojas: Jornada, Movimientos, Cargas, Visitas, Descargas, Correcciones, Reinicios y Control.
-- Conserva IndexedDB `cdt_demo_v1` y el sistema de actualizaciones v0.3.
+- Vista **Gerencia (demo)**: elegir un Excel CDT-v0.4 de Almacén o Reparto y registrar automáticamente los movimientos válidos.
+- Detección de IDs duplicados y conflictos de contenido; resumen de la importación e incidencias.
+- La importación conserva los saldos de prueba del móvil; los registros de Gerencia quedan en el mismo IndexedDB del dispositivo.
+- Copia JSON desde Más o Gerencia.
+- Se conservan cargas, visitas, correcciones, reinicios, Excel diario y actualizaciones.
 
-## MUY IMPORTANTE
-- Solo datos ficticios: aún no existen autenticación, seguridad de perfiles, cifrado de tiempos, importación de Gerencia ni base central.
-- La fecha/hora en las hojas indica cuándo se registró cada operación; **no mide tiempos de trabajo**. Hasta que exista cifrado y permisos, NO exportar datos reales ni tiempos exclusivos de Gerencia.
-- El teléfono no puede confirmar que un correo haya llegado; «Marcar como enviada» es una declaración manual.
-- Reenviar preserva ID y contenido de la jornada; Gerencia necesitará validación de IDs para evitar duplicados (pendiente).
-- Guardar copia de seguridad JSON antes de actualizar y no borrar datos del sitio.
+## Limitaciones críticas
+- **No es una base central ni sincroniza entre PC y móvil**. Eso queda para una etapa posterior.
+- **El selector Gerencia es demostrativo, sin autenticación real**: NO utilizar con datos empresariales.
+- **No actualiza existencias reales** ni efectúa aún conciliación cronológica. Importa un libro auxiliar de movimientos y los totales no equivalen a saldo.
+- El lector admite exclusivamente los XLSX CDT-v0.4 creados por esta app, sin compresión ZIP, no archivos genéricos de Excel. La protección de tiempos, cifrado, identificación de operadores y conciliación todavía no se han implementado.
+- Se pueden importar los Excel de prueba sin internet. No borrar Safari ni datos del sitio.
 
-## Instalación
-Sube los **10 archivos** del ZIP a la raíz de `josegude-ux/control-de-tanques`, incluyendo `xlsx-local.js`, reemplazando los existentes. No subir el ZIP como único archivo. Comprueba que GitHub Pages publica v0.4.0.
-
-## Corrección v0.4.2
-Se corrige la referencia `jornadaPage` por `journalPage` en el renderizado de pantallas. No modifica la estructura de IndexedDB ni borra registros.
+## Prueba sugerida
+1. Actualizar todos los archivos desde GitHub Pages, incluido `xlsx-import-local.js`.
+2. En Más, escoger Gerencia (demo) y abrir Gerencia.
+3. Importar `control-tanques-DEMO-reparto-2026-10-20.xlsx`.
+4. Confirmar que el resumen muestra una descarga nueva de 450 L.
+5. Importar el mismo Excel de nuevo. Debe indicar cero nuevos y uno duplicado.
+6. Comprobar que las existencias locales siguen idénticas.
