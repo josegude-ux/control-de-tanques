@@ -1,7 +1,7 @@
 'use strict';
 // Prototipo fase 1: datos de demostración. No autentica perfiles ni exporta Excel.
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.4.1';
+const APP_VERSION='0.4.2';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -123,7 +123,7 @@ async function markJournalSent(){
  delete state.preparedJournals[key];await persist();toast('Jornada marcada como enviada; disponible para reenviar');
 }
 
-function render(){navbar();const pages={inicio:home,carga:loadPage,visita:visitPage,historial:historyPage,admin:adminPage,jornada:jornadaPage};el('screen').innerHTML=pages[state.page]();}
+function render(){navbar();const pages={inicio:home,carga:loadPage,visita:visitPage,historial:historyPage,admin:adminPage,jornada:journalPage};el('screen').innerHTML=pages[state.page]();}
 async function navigate(page){if(editingId)editingId=null;if(state.openVisit && page==='carga')return toast('Finaliza primero la visita en curso');state.page=page;await persist()}
 async function processLoad(form){if(state.sentJournals?.[journalKey(localDay(now()),'almacen')])return toast('Jornada de Almacén ya enviada');const vehicle=el('loadVehicle').value,index=Number(el('loadTank').value),amount=Number(el('loadLiters').value),old=state.tanks[vehicle][index],discard=el('residual').value==='desechar',merma=discard?old:0;const remaining=discard?0:old;if(!el('zeroLoad').checked||!Number.isFinite(amount)||amount<=0||amount+remaining>1000||amount>state.cisterna)return toast('Revisa la cantidad, capacidad, cisterna y confirmación del contador');if(!confirm(`Registrar ${fmt(amount)} L al ${vehicle}, tanque ${index+1}${merma?` y merma de ${fmt(merma)} L`:''}?`))return;
 invalidateDraft('almacen');state.tanks[vehicle][index]=remaining+amount;state.cisterna-=amount;const at=now();state.loads.push({id:uid(),vehicle,index,amount,merma,at});state.log.push({title:'Carga',desc:`${vehicle} · Tanque ${index+1} · ${fmt(amount)} L${merma?` · Merma ${fmt(merma)} L`:''}`,at});toast('Carga ficticia guardada');await persist()}

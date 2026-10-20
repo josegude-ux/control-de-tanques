@@ -1,5 +1,5 @@
 {
-  "version": "0.4.1",
+  "version": "0.4.2",
   "release": "2026-10-20",
-  "notes": "Excel XLSX diario local Almacén y Reparto; compartir y reenviar; no se borran datos previos"
+  "notes": "Corrige un nombre de función incorrecto que impedía responder a los botones; conserva IndexedDB"
 }

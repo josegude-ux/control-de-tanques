@@ -1,4 +1,4 @@
-## v0.4.1 - Corrección pantalla en blanco
+## v0.4.2 - Corrección pantalla en blanco
 
 Se corrige un error de inicialización del módulo de jornadas que impedía renderizar el contenido en iPhone. No se modifican el esquema IndexedDB ni los movimientos existentes. Sube todos los archivos, incluidos `xlsx-local.js` y `version.json`. No borres los datos de Safari.
 
@@ -21,3 +21,6 @@ Se corrige un error de inicialización del módulo de jornadas que impedía rend
 
 ## Instalación
 Sube los **10 archivos** del ZIP a la raíz de `josegude-ux/control-de-tanques`, incluyendo `xlsx-local.js`, reemplazando los existentes. No subir el ZIP como único archivo. Comprueba que GitHub Pages publica v0.4.0.
+
+## Corrección v0.4.2
+Se corrige la referencia `jornadaPage` por `journalPage` en el renderizado de pantallas. No modifica la estructura de IndexedDB ni borra registros.
