@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.1';
+const APP_VERSION='0.9.2';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -329,8 +329,9 @@ function managerPage(){
  ${action('Descargar copia JSON','backup',true)}`;
 }
 // Comparación canónica: no depende del orden de las propiedades ni de metadatos adicionales.
+// journalId identifica la exportación/jornada, no el contenido físico del movimiento.
 // Los cambios reales en campos del movimiento siguen generando incidencia.
-const MOVEMENT_FIELDS=['id','type','vehicle','tank','client','dest','litres','loss','time','journalId','date','role'];
+const MOVEMENT_FIELDS=['id','type','vehicle','tank','client','dest','litres','loss','time','date','role'];
 function movementDifferences(a,b){
  return MOVEMENT_FIELDS.filter(k=>{
   const x=a[k],y=b[k];

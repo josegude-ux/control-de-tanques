@@ -1,5 +1,5 @@
 {
-  "version": "0.9.1",
+  "version": "0.9.2",
   "release": "2026-10-20",
-  "notes": "Comparación canónica de movimientos importados; incidencias con campos discrepantes. Conserva IndexedDB local."
+  "notes": "Ignora diferencias exclusivas de journalId al detectar duplicados; conserva la detección de cambios operativos y datos IndexedDB."
 }

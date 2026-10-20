@@ -16,3 +16,6 @@
 
 ## v0.9.1
 Comparación canónica de movimientos importados, con detalle de campos discrepantes. No borra ni migra IndexedDB. Las incidencias históricas permanecen en el registro.
+
+## v0.9.2
+La comparación de movimientos con igual ID ignora journalId (metadato de jornada). Diferencias en litros, tanque, fecha u otros campos operativos siguen generando incidencia. No borra IndexedDB ni incidencias anteriores.
