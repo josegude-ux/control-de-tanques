@@ -1,5 +1,5 @@
 {
-  "version": "0.9.6",
+  "version": "0.9.7",
   "release": "2026-10-20",
-  "notes": "Varios lotes Excel diarios sin duplicar movimientos; recargas sucesivas; cisterna pendiente (DEMO)."
+  "notes": "Catálogo de clientes local de Gerencia: ficha, edición, días habituales y previsión (DEMO)."
 }

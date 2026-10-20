@@ -1,38 +1,7 @@
-# Control de Tanques v0.9.0 — Existencias provisionales (demo)
+# Control de Tanques v0.9.7 (DEMO)
 
-## Funcionalidad
-- En Reparto → Más aparece «Inicio excepcional sin archivo de cargas». Solo antes de la primera operación del vehículo ese día.
-- Se introducen litros de cada tanque, con confirmación. Se registra la declaración anterior y nueva y se marca pendiente de Gerencia.
-- Las descargas posteriores descuentan del saldo declarado.
-- Si llega un Excel de Gerencia mientras haya una apertura provisional, sus cargas quedan pendientes, **sin sumarse**, para evitar duplicar existencias.
-- El Excel diario sigue teniendo ocho hojas; la hoja Control incluye la declaración provisional para que Gerencia pueda verla al importar la jornada.
-- Gerencia muestra las aperturas provisionales recibidas, pendientes de cotejo manual. **Esta versión no implementa aún la resolución automática ni un archivo de saldos confirmados.**
+Novedad: Gerencia → Más → Catálogo de clientes. Alta, edición y eliminación local de fichas con nombre, población, número de tanques, permiso municipal informativo, día de cierre, días habituales de reparto y cantidad prevista. Se conserva en IndexedDB y copia JSON.
 
-## Instalación y seguridad
-- Descarga primero una copia JSON con la v0.8. No borres los datos del dispositivo.
-- Sustituye los doce archivos en GitHub Pages y actualiza a v0.9.0.
-- Solo DEMO. No hay permisos reales, sincronización ni tiempos protegidos. Los perfiles no son un sistema de seguridad.
-- No utilizar con datos reales.
+No incluye aún planificación semanal por vehículo, traspaso de rutas a Reparto ni avisos administrativos. Las cargas, conciliación y envíos siguen siendo de prueba.
 
-## v0.9.1
-Comparación canónica de movimientos importados, con detalle de campos discrepantes. No borra ni migra IndexedDB. Las incidencias históricas permanecen en el registro.
-
-## v0.9.2
-La comparación de movimientos con igual ID ignora journalId (metadato de jornada). Diferencias en litros, tanque, fecha u otros campos operativos siguen generando incidencia. No borra IndexedDB ni incidencias anteriores.
-
-## v0.9.3
-Selector de perfiles en cabecera sin pasar por Ajustes. No cambia los identificadores de IndexedDB ni el formato Excel. Se mantienen los datos locales del mismo origen web.
-
-## v0.9.4
-- Gerencia: detalle de conciliación cronológica por movimiento con fecha, vehículo, tanque, litros, estado y motivo pendiente.
-- Solo lectura; no modifica las existencias ni la base local del operario.
-
-## v0.9.5
-En Almacén > Más se permite ajustar existencias de vehículos, dejando la cisterna desconocida. El ajuste conserva el historial anterior y queda auditado. Las cargas con cisterna pendiente no descuentan de un saldo inventado, por lo que la conciliación real sigue pendiente. DEMO: no usar como inventario oficial.
-
-## v0.9.6
-- Permite nuevas cargas tras marcar un lote como enviado.
-- Exporta únicamente movimientos no enviados en nuevos lotes Excel con nombres distintos.
-- Permite reenviar el último lote sin alterar su identificador.
-- Conserva existencias iniciales y la cisterna pendiente de confirmación.
-- Sigue siendo una DEMO local, no apta como registro oficial.
+Actualizar archivos en GitHub Pages sin borrar datos de Safari. Guardar una copia JSON antes de actualizar.
