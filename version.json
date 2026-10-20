@@ -1,5 +1,5 @@
 {
-  "version": "0.9.14",
+  "version": "0.9.15",
   "release": "2026-10-20",
-  "notes": "Planificación rápida por selección global de clientes, litros y vehículo por entrega."
+  "notes": "Vehículo elegido antes de seleccionar clientes; entrada de litros por lote y menú Descarga."
 }
