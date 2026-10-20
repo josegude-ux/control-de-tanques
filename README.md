@@ -1,18 +1,19 @@
-# Control de Tanques · Mahou · demo local v0.3
+# Control de Tanques · Demo v0.4 · Excel local
 
 ## Novedades
-- Corregir tanque de destino y lectura de una descarga dentro de la visita, con motivo e historial.
-- Recalcular los litros de la descarga siguiente si el contador es acumulativo, y bloquear cambios que provoquen saldo negativo.
-- Registrar puestas a cero excepcionales del contador entre descargas, sin alterar los litros previos.
-- Reabrir la última visita cerrada antes del envío diario, solo cuando no existan movimientos posteriores del mismo vehículo.
-- Conservar el almacenamiento IndexedDB (`cdt_demo_v1`) para no perder las pruebas.
-- Actualización automática con `version.json` y menú Más.
+- **Más → Enviar jornada** en Almacén y Reparto.
+- Archivo `.xlsx` real generado sin conexión y sin dependencias externas (`xlsx-local.js`). Una jornada por fecha y perfil.
+- Compartir con el menú de iOS si está disponible; si no, descargar para compartir desde Archivos.
+- Después del envío, **Marcar jornada como enviada** para bloquear reaperturas y poder **reenviar el mismo Excel**, con identificadores idénticos.
+- Hojas: Jornada, Movimientos, Cargas, Visitas, Descargas, Correcciones, Reinicios y Control.
+- Conserva IndexedDB `cdt_demo_v1` y el sistema de actualizaciones v0.3.
 
-## Limitaciones IMPORTANTES
-- Exclusivamente datos ficticios. El selector de perfil NO protege información ni hay gestión de usuarios.
-- Todavía no hay Excel, sincronización con Gerencia, tiempos seguros ni control de jornada enviada.
-- Las correcciones se restringen a visitas sin movimientos posteriores para evitar descuadres históricos.
-- No usar con datos reales hasta completar permisos, auditoría, conciliación y pruebas.
+## MUY IMPORTANTE
+- Solo datos ficticios: aún no existen autenticación, seguridad de perfiles, cifrado de tiempos, importación de Gerencia ni base central.
+- La fecha/hora en las hojas indica cuándo se registró cada operación; **no mide tiempos de trabajo**. Hasta que exista cifrado y permisos, NO exportar datos reales ni tiempos exclusivos de Gerencia.
+- El teléfono no puede confirmar que un correo haya llegado; «Marcar como enviada» es una declaración manual.
+- Reenviar preserva ID y contenido de la jornada; Gerencia necesitará validación de IDs para evitar duplicados (pendiente).
+- Guardar copia de seguridad JSON antes de actualizar y no borrar datos del sitio.
 
 ## Instalación
-Sube todos los archivos a la raíz de `josegude-ux/control-de-tanques`, reemplazando las versiones anteriores. GitHub Pages publicará desde `main` / raíz. No borres datos del sitio en Safari.
+Sube los **10 archivos** del ZIP a la raíz de `josegude-ux/control-de-tanques`, incluyendo `xlsx-local.js`, reemplazando los existentes. No subir el ZIP como único archivo. Comprueba que GitHub Pages publica v0.4.0.

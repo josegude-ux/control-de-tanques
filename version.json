@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "release": "2026-10-20",
-  "notes": "Correcciones auditadas de descargas; reinicios excepcionales del contador; reapertura de visitas cerradas; datos locales conservados"
+  "notes": "Excel XLSX diario local Almacén y Reparto; compartir y reenviar; no se borran datos previos"
 }
