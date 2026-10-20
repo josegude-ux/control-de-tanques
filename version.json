@@ -1,5 +1,5 @@
 {
-  "version": "0.9.10",
+  "version": "0.9.11",
   "release": "2026-10-20",
-  "notes": "Clientes compactos, buscador, duplicados confirmados, días laborables y valores por defecto."
+  "notes": "Corrige la versión interna y mejora la recarga de actualizaciones, manteniendo mejoras de clientes."
 }
