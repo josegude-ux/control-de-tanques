@@ -1,7 +1,7 @@
 'use strict';
-// Versión 0.9.5: existencias iniciales provisionales y conciliación pendiente (demo).
+// Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.5';
+const APP_VERSION='0.9.6';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -40,7 +40,7 @@ function provisionalPanel(){
 }
 async function saveProvisional(){
  if(state.role!=='reparto'||provisionalFor(state.vehicle))return toast('Ya existe una apertura provisional para este vehículo');
- if(state.sentJournals?.[journalKey(localDay(now()),'reparto')])return toast('La jornada ya está enviada; no se puede cambiar la apertura');
+ 
  const v=state.vehicle,day=localDay(now());
  if(state.openVisit?.vehicle===v||(state.visits||[]).some(x=>x.vehicle===v&&localDay(x.started)===day)||Object.values(state.receivedLoads||{}).some(m=>m.vehicle===v&&localDay(m.receivedAt||m.time)===day))return toast('Ya hay operaciones de hoy; no se puede cambiar la apertura');
  const amounts=state.tanks[v].map((_,i)=>{const field=el('provTank'+i);return field?.value.trim()===''?NaN:Number(field?.value)});
@@ -103,7 +103,7 @@ if(state.role==='almacen')txt+=action('Nueva carga de prueba','go-carga');
 if(state.role==='reparto'){txt+=provisionalFor(state.vehicle)?'<div class="notice">Existencias PROVISIONALES · pendientes de Gerencia.</div>':'';txt+=action(state.openVisit?'Continuar visita':'Nueva visita de prueba','go-visita');}
 if(state.role==='gerencia')txt+=card('<h3>Gerencia · importación de pruebas</h3><p>Puedes importar Excel de jornada sin modificar las existencias de demostración.</p>'+action('Abrir importaciones','go-gerencia')+'<p class="hint">La sincronización entre PC y móvil y los permisos reales siguen pendientes.</p>');
 return txt}
-function loadPage(){let tanks=state.tanks[state.vehicle];return `<h2 class="heading">Carga individual</h2><div class="notice">Operación de prueba local. Un tanque por registro. Confirma que el contador físico se ha puesto a cero.</div><form id="loadForm" class="form"><label class="field">Vehículo<select id="loadVehicle"><option value="camion" ${state.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${state.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select></label><label class="field">Tanque del vehículo<select id="loadTank">${tanks.map((v,i)=>`<option value="${i}">Tanque ${i+1} · ${fmt(v)} L disponibles</option>`).join('')}</select></label><label class="field">Destino del sobrante<select id="residual"><option value="mantener">Conservar el sobrante</option><option value="desechar">Desechar sobrante como merma</option></select></label><label class="field">Lectura final del contador (litros cargados)<input id="loadLiters" inputmode="decimal" type="number" min="0.01" step="0.01" required placeholder="Ej. 200" /></label><label class="check"><input type="checkbox" id="zeroLoad" required /> He puesto el contador de carga a cero antes de iniciar esta operación.</label><button class="btn" type="submit">Confirmar carga de prueba</button></form><p class="hint">La v1 registra los movimientos y conserva los saldos locales. El Excel diario se genera desde Más → Enviar jornada. El tiempo real queda pendiente.</p>`}
+function loadPage(){let tanks=state.tanks[state.vehicle];return `<h2 class="heading">Carga individual</h2><div class="notice">Operación de prueba local. Un tanque por registro. Puedes cargar de nuevo tras enviar un lote. Si la cisterna es desconocida, la conciliación queda pendiente. Confirma que el contador físico se ha puesto a cero.</div><form id="loadForm" class="form"><label class="field">Vehículo<select id="loadVehicle"><option value="camion" ${state.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${state.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select></label><label class="field">Tanque del vehículo<select id="loadTank">${tanks.map((v,i)=>`<option value="${i}">Tanque ${i+1} · ${fmt(v)} L disponibles</option>`).join('')}</select></label><label class="field">Destino del sobrante<select id="residual"><option value="mantener">Conservar el sobrante</option><option value="desechar">Desechar sobrante como merma</option></select></label><label class="field">Lectura final del contador (litros cargados)<input id="loadLiters" inputmode="decimal" type="number" min="0.01" step="0.01" required placeholder="Ej. 200" /></label><label class="check"><input type="checkbox" id="zeroLoad" required /> He puesto el contador de carga a cero antes de iniciar esta operación.</label><button class="btn" type="submit">Confirmar carga de prueba</button></form><p class="hint">La v1 registra los movimientos y conserva los saldos locales. El Excel diario se genera desde Más → Enviar jornada. El tiempo real queda pendiente.</p>`}
 function visitPage(){
  const v=state.openVisit, available=state.tanks[state.vehicle];
  if(!v)return `<h2 class="heading">Nueva visita</h2><div class="notice">Usa clientes ficticios. Esta fase no contiene el catálogo real de clientes.</div><form id="visitForm" class="form"><label class="field">Cliente de prueba<select id="client" required><option value="Cervecería Ejemplo">Cervecería Ejemplo</option><option value="Bar de Pruebas">Bar de Pruebas</option></select></label><label class="check"><input id="zeroVisit" type="checkbox" required> He puesto el contador de descarga a cero al llegar al cliente.</label><button class="btn" type="submit">Iniciar visita</button></form>${reopenList()}`;
@@ -156,10 +156,21 @@ let journalDate=localDay(new Date().toISOString());
 let journalWorker='Operario de prueba';
 const journalRole=()=>state.role==='almacen'?'almacen':state.role==='reparto'?'reparto':null;
 const journalKey=(date,role)=>`${date}|${role}`;
+// Cada envío es un lote inmutable; los movimientos ya enviados no se vuelven a incluir.
+function currentBatchKey(date,role){
+ const base=journalKey(date,role),sent=state.sentJournals||{},prepared=state.preparedJournals||{};
+ if(prepared[base]&&!sent[base])return base;
+ if(!sent[base])return base;
+ let n=2;
+ while(sent[`${base}|${n}`])n++;
+ return `${base}|${n}`;
+}
+function latestSentKey(date,role){const base=journalKey(date,role),keys=Object.keys(state.sentJournals||{}).filter(k=>k===base||k.startsWith(base+'|'));return keys.sort((a,b)=>Number((b.split('|')[2]||1))-Number((a.split('|')[2]||1)))[0]||base;}
+
 function invalidateDraft(role){if(!state.preparedJournals)return;for(const k of Object.keys(state.preparedJournals))if(k.endsWith('|'+role))delete state.preparedJournals[k];}
 function journalSources(date,role){
- const loads=role==='almacen'?state.loads.filter(l=>localDay(l.at)===date):[];
- const visits=role==='reparto'?state.visits.filter(v=>localDay(v.started)===date):[];
+ const loads=role==='almacen'?state.loads.filter(l=>localDay(l.at)===date&&!l.sentAt):[];
+ const visits=role==='reparto'?state.visits.filter(v=>localDay(v.started)===date&&!v.sentAt):[];
  return {loads,visits};
 }
 function journalSnapshot(date,role){
@@ -188,18 +199,18 @@ function journalTabs(s){
 }
 function journalPage(){
  const role=journalRole();if(!role)return `<h2 class="heading">Enviar jornada</h2><div class="notice">Cambia a Almacén o Reparto para exportar la jornada de ese perfil. Gerencia tendrá su propio sistema de importación en la siguiente fase.</div>${action('Volver a Más','go-admin',true)}`;
- const sent=state.sentJournals?.[journalKey(journalDate,role)];const {loads,visits}=journalSources(journalDate,role),items=role==='almacen'?loads.length:visits.reduce((n,v)=>n+v.discharges.length,0),liters=role==='almacen'?loads.reduce((n,v)=>n+v.amount,0):visits.reduce((n,v)=>n+v.discharges.reduce((t,d)=>t+d.liters,0),0);
- return `<h2 class="heading">Enviar jornada</h2><div class="notice">Exportación Excel local · SOLO DATOS DE PRUEBA. No hay envío automático ni recepción confirmada.</div><label class="field">Fecha de la jornada<input type="date" id="journalDate" value="${esc(journalDate)}"></label><label class="field">Operario (etiqueta de prueba)<input id="journalWorker" value="${esc(journalWorker)}" maxlength="70" placeholder="Operario de prueba"></label>${card(`<div class="row"><b>Perfil</b><b>${role==='almacen'?'Almacén':'Reparto'}</b></div><div class="row"><span>Movimientos</span><b>${items}</b></div><div class="row"><span>Litros</span><b>${fmt(liters)} L</b></div><div class="row"><span>Estado</span><b>${sent?'Marcada como enviada':'Editable'}</b></div>`)}${sent?card(`<h3>Jornada cerrada</h3><p class="hint">El mismo Excel puede volver a descargarse. No se generan identificadores nuevos.</p>${action('Reenviar mismo Excel','resend-xlsx')}`):`${state.openVisit&&localDay(state.openVisit.started)===journalDate?`<div class="notice error">Cierra primero la visita abierta de esta fecha.</div>`:''}${action('Generar y compartir Excel','make-xlsx')}<p class="hint">Después de comprobar que has compartido el archivo, podrás marcar la jornada como enviada. Si cancelas el envío, déjala editable.</p>${state.preparedJournals?.[journalKey(journalDate,role)]?action('Marcar jornada como enviada','mark-sent',true):''}`}<p class="hint">El archivo conserva las operaciones, correcciones y reinicios. No borra nada del móvil. Las horas guardadas son marcas de eventos; todavía NO existe control real de duración ni cifrado.</p>${action('Volver a Más','go-admin',true)}`;
+ const sent=state.sentJournals?.[latestSentKey(journalDate,role)];const batchKey=currentBatchKey(journalDate,role);const {loads,visits}=journalSources(journalDate,role),items=role==='almacen'?loads.length:visits.reduce((n,v)=>n+v.discharges.length,0),liters=role==='almacen'?loads.reduce((n,v)=>n+v.amount,0):visits.reduce((n,v)=>n+v.discharges.reduce((t,d)=>t+d.liters,0),0);
+ return `<h2 class="heading">Enviar jornada</h2><div class="notice">Exportación Excel local · SOLO DATOS DE PRUEBA. No hay envío automático ni recepción confirmada.</div><label class="field">Fecha de la jornada<input type="date" id="journalDate" value="${esc(journalDate)}"></label><label class="field">Operario (etiqueta de prueba)<input id="journalWorker" value="${esc(journalWorker)}" maxlength="70" placeholder="Operario de prueba"></label>${card(`<div class="row"><b>Perfil</b><b>${role==='almacen'?'Almacén':'Reparto'}</b></div><div class="row"><span>Movimientos</span><b>${items}</b></div><div class="row"><span>Litros</span><b>${fmt(liters)} L</b></div><div class="row"><span>Estado</span><b>${items?'Movimientos nuevos pendientes':sent?'Último lote enviado':'Sin movimientos'}</b></div>`)}${sent?card(`<h3>Último lote enviado</h3><p class="hint">Puedes reenviar el último Excel sin generar identificadores nuevos.</p>${action('Reenviar mismo Excel','resend-xlsx')}`):''}${items?`${state.openVisit&&localDay(state.openVisit.started)===journalDate?`<div class="notice error">Cierra primero la visita abierta de esta fecha.</div>`:''}${action('Generar y compartir Excel','make-xlsx')}<p class="hint">Después de comprobar que has compartido el archivo, podrás marcar la jornada como enviada. Si cancelas el envío, déjala editable.</p>${state.preparedJournals?.[batchKey]?action('Marcar jornada como enviada','mark-sent',true):''}`:''}<p class="hint">El archivo conserva las operaciones, correcciones y reinicios. No borra nada del móvil. Las horas guardadas son marcas de eventos; todavía NO existe control real de duración ni cifrado.</p>${action('Volver a Más','go-admin',true)}`;
 }
 async function sendJournal(resend){
  const role=journalRole();if(!role)return toast('Selecciona perfil Almacén o Reparto');
- const key=journalKey(journalDate,role);
+ const key=resend?latestSentKey(journalDate,role):currentBatchKey(journalDate,role);
  if(!resend&&state.openVisit&&localDay(state.openVisit.started)===journalDate)return toast('Finaliza antes la visita abierta');
  if(!resend&&!journalSources(journalDate,role)[role==='almacen'?'loads':'visits'].length)return toast('No hay movimientos cerrados para esa jornada');
  let snapshot;
  if(resend){snapshot=state.sentJournals?.[key];if(!snapshot)return toast('No hay una jornada enviada para reenviar');}
  else{snapshot=journalSnapshot(journalDate,role);state.preparedJournals??={};state.preparedJournals[key]=snapshot;await write();}
- const file=`control-tanques-DEMO-${role}-${journalDate}.xlsx`;
+ const file=`control-tanques-DEMO-${role}-${journalDate}-lote-${key.split('|')[2]||1}.xlsx`;
  const blob=SheetXLSX.generate(journalTabs(snapshot));const xfile=typeof File==='function'?new File([blob],file,{type:blob.type}):null;
  try{if(xfile&&navigator.canShare?.({files:[xfile]})&&navigator.share){await navigator.share({files:[xfile],title:'Jornada de prueba · Control de Tanques'});toast('Compartir completado; confirma después si realmente se envió');}
  else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=file;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Excel descargado. Compártelo desde Archivos.');}}
@@ -207,12 +218,12 @@ async function sendJournal(resend){
  render();
 }
 async function markJournalSent(){
- const role=journalRole(),key=journalKey(journalDate,role),draft=state.preparedJournals?.[key];
+ const role=journalRole(),key=currentBatchKey(journalDate,role),draft=state.preparedJournals?.[key];
  if(!draft)return toast('Genera primero el Excel');
  if(!confirm('¿Has enviado o guardado el archivo correctamente? Marcar como enviada bloqueará las correcciones de esta jornada. El sistema NO puede comprobar la recepción en Gerencia.'))return;
  state.sentJournals??={};state.sentJournals[key]=structuredClone(draft);
- for(const v of state.visits)if(role==='reparto'&&localDay(v.started)===journalDate)v.sentAt=now();
- for(const l of state.loads)if(role==='almacen'&&localDay(l.at)===journalDate)l.sentAt=now();
+ for(const v of state.visits)if(role==='reparto'&&draft.visits.some(row=>row[0]===v.id))v.sentAt=now();
+ for(const l of state.loads)if(role==='almacen'&&draft.loads.some(row=>row[0]===l.id))l.sentAt=now();
  delete state.preparedJournals[key];await persist();toast('Jornada marcada como enviada; disponible para reenviar');
 }
 
@@ -390,9 +401,9 @@ async function importManagerFile(file){
 
 function render(){navbar();const pages={inicio:home,carga:loadPage,visita:visitPage,historial:historyPage,admin:adminPage,jornada:journalPage,gerencia:managerPage};el('screen').innerHTML=pages[state.page]();}
 async function navigate(page){if(editingId)editingId=null;if(state.openVisit && page==='carga')return toast('Finaliza primero la visita en curso');state.page=page;await persist()}
-async function processLoad(form){if(state.sentJournals?.[journalKey(localDay(now()),'almacen')])return toast('Jornada de Almacén ya enviada');const vehicle=el('loadVehicle').value,index=Number(el('loadTank').value),amount=Number(el('loadLiters').value),old=state.tanks[vehicle][index],discard=el('residual').value==='desechar',merma=discard?old:0;const remaining=discard?0:old;if(!el('zeroLoad').checked||!Number.isFinite(amount)||amount<=0||amount+remaining>1000||(state.stockAdjustment?.cisternKnown!==false&&amount>state.cisterna))return toast('Revisa la cantidad, capacidad, cisterna y confirmación del contador');if(!confirm(`Registrar ${fmt(amount)} L al ${vehicle}, tanque ${index+1}${merma?` y merma de ${fmt(merma)} L`:''}?`))return;
+async function processLoad(form){const vehicle=el('loadVehicle').value,index=Number(el('loadTank').value),amount=Number(el('loadLiters').value),old=state.tanks[vehicle][index],discard=el('residual').value==='desechar',merma=discard?old:0;const remaining=discard?0:old;if(!el('zeroLoad').checked||!Number.isFinite(amount)||amount<=0||amount+remaining>1000||(state.stockAdjustment?.cisternKnown!==false&&amount>state.cisterna))return toast('Revisa la cantidad, capacidad, cisterna y confirmación del contador');if(!confirm(`Registrar ${fmt(amount)} L al ${vehicle}, tanque ${index+1}${merma?` y merma de ${fmt(merma)} L`:''}?`))return;
 invalidateDraft('almacen');state.tanks[vehicle][index]=remaining+amount;if(state.stockAdjustment?.cisternKnown!==false)state.cisterna-=amount;const at=now();state.loads.push({id:uid(),vehicle,index,amount,merma,at,cisternPending:state.stockAdjustment?.cisternKnown===false});state.log.push({title:'Carga',desc:`${vehicle} · Tanque ${index+1} · ${fmt(amount)} L${merma?` · Merma ${fmt(merma)} L`:''}`,at});toast('Carga ficticia guardada');await persist()}
-async function startVisit(){if(state.sentJournals?.[journalKey(localDay(now()),'reparto')])return toast('Jornada de Reparto ya enviada');if(state.openVisit)return toast('Ya hay una visita abierta');if(!el('zeroVisit').checked)return toast('Confirma la puesta a cero del contador');state.openVisit={id:uid(),client:el('client').value,vehicle:state.vehicle,started:now(),reading:0,segment:0,resets:[],corrections:[],lastSource:0,discharges:[]};await persist()}
+async function startVisit(){if(state.openVisit)return toast('Ya hay una visita abierta');if(!el('zeroVisit').checked)return toast('Confirma la puesta a cero del contador');state.openVisit={id:uid(),client:el('client').value,vehicle:state.vehicle,started:now(),reading:0,segment:0,resets:[],corrections:[],lastSource:0,discharges:[]};await persist()}
 async function discharge(){const v=state.openVisit;if(!v)return;const source=Number(el('sourceTank').value),dest=el('destTank').value,reading=Number(el('reading').value),raw=el('reading').value;const liters=Math.round((reading-v.reading)*100)/100;if(!dest||raw.trim()===''||!Number.isFinite(reading)||liters<=0||liters>state.tanks[v.vehicle][source])return toast('Lectura inválida o litros insuficientes en el tanque');if(!confirm(`Registrar ${fmt(liters)} L desde tanque ${source+1} a tanque cliente ${dest}?`))return;invalidateDraft('reparto');state.tanks[v.vehicle][source]=Math.round((state.tanks[v.vehicle][source]-liters)*100)/100;v.lastSource=source;v.reading=reading;v.discharges.push({id:uid(),source,dest,reading,liters,segment:v.segment||0,at:now()});await persist();toast(`Registrados ${fmt(liters)} L. Selecciona otra vez el tanque del cliente.`)}
 function calcRevised(v,id,nextReading){
  const array=v.discharges.map(d=>({...d})); const at=array.findIndex(d=>d.id===id);

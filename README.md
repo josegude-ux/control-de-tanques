@@ -29,3 +29,10 @@ Selector de perfiles en cabecera sin pasar por Ajustes. No cambia los identifica
 
 ## v0.9.5
 En Almacén > Más se permite ajustar existencias de vehículos, dejando la cisterna desconocida. El ajuste conserva el historial anterior y queda auditado. Las cargas con cisterna pendiente no descuentan de un saldo inventado, por lo que la conciliación real sigue pendiente. DEMO: no usar como inventario oficial.
+
+## v0.9.6
+- Permite nuevas cargas tras marcar un lote como enviado.
+- Exporta únicamente movimientos no enviados en nuevos lotes Excel con nombres distintos.
+- Permite reenviar el último lote sin alterar su identificador.
+- Conserva existencias iniciales y la cisterna pendiente de confirmación.
+- Sigue siendo una DEMO local, no apta como registro oficial.

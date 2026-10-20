@@ -1,5 +1,5 @@
 {
-  "version": "0.9.5",
+  "version": "0.9.6",
   "release": "2026-10-20",
-  "notes": "Ajuste auditable de existencias iniciales en Almacén y cisterna pendiente (DEMO)."
+  "notes": "Varios lotes Excel diarios sin duplicar movimientos; recargas sucesivas; cisterna pendiente (DEMO)."
 }
