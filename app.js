@@ -1,7 +1,7 @@
 'use strict';
 // Prototipo fase 1: datos de demostración. No autentica perfiles ni exporta Excel.
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.5.0';
+const APP_VERSION='0.6.0';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -56,7 +56,7 @@ function canReopen(v){
 }
 function historyPage(){const movements=[...state.log].reverse();return `<h2 class="heading">Historial local</h2><div class="notice">Se muestran también las correcciones, los reinicios del contador y la reapertura de visitas. Las jornadas se pueden exportar desde Más → Enviar jornada.</div>${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}`}
 const updatePanel=()=>card(`<h3>Actualizaciones</h3><div class="row"><span>Versión instalada</span><b class="mono">${APP_VERSION}</b></div><p class="update-info">La app busca nuevas versiones al abrirse o regresar a primer plano si hay conexión. No se eliminan los datos locales.</p>${action('Buscar actualizaciones','check-update',true)}${updateAvailable?`<div class="update-ready"><h4>Nueva versión disponible</h4><p class="compact">Puedes instalar la nueva versión sin borrar los movimientos de prueba.</p>${action('Actualizar ahora','apply-update')}</div>`:''}<p class="update-info" id="updateStatus">${navigator.onLine?'Para buscar una nueva versión, toca el botón.':'Sin conexión: se mantiene la versión instalada.'}</p>`);
-function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Enviar jornada · Excel</h3><p class="hint">Un Excel por fecha y perfil. Funciona sin conexión. Reenvía el mismo archivo cuando ya esté marcado como enviado.</p>${action('Abrir envío de jornada','go-jornada')}`)}${updatePanel()}${state.role==='gerencia'?card(`<h3>Gerencia · Excel recibidos</h3><p class="hint">Solo importaciones locales de pruebas; no hay sincronización ni acceso seguro.</p>${action('Abrir importador de Excel','go-gerencia')}`):''}${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Implementado en demo: correcciones auditadas, reinicio de contador y reapertura de visitas. Excel de jornada en fase de pruebas. Implementada: importación local de pruebas por Gerencia. Pendiente: conciliación de stock, sincronización, control real de tiempos, permisos seguros, cifrado y conexión de Gerencia.</p>`)}`}
+function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Enviar jornada · Excel</h3><p class="hint">Un Excel por fecha y perfil. Funciona sin conexión. Reenvía el mismo archivo cuando ya esté marcado como enviado.</p>${action('Abrir envío de jornada','go-jornada')}`)}${updatePanel()}${state.role==='gerencia'?card(`<h3>Gerencia · Excel recibidos</h3><p class="hint">Solo importaciones locales de pruebas; no hay sincronización ni acceso seguro.</p>${action('Abrir importador de Excel','go-gerencia')}`):''}${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Implementado en demo: correcciones auditadas, reinicio de contador y reapertura de visitas. Excel de jornada en fase de pruebas. Implementada: importación local de pruebas por Gerencia. En pruebas: conciliación de existencias. Pendiente: sincronización, control real de tiempos, permisos seguros, cifrado y conexión de Gerencia.</p>`)}`}
 
 // v0.4 · Excel local por día y perfil. No hay identificación auténtica ni control de permisos todavía.
 const localDay=iso=>{if(!iso)return '';const d=new Date(iso);if(Number.isNaN(d.getTime()))return '';return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
@@ -124,18 +124,85 @@ async function markJournalSent(){
 }
 
 
-// Gerencia v0.5: recibos de prueba almacenados en este mismo navegador.
+// Gerencia v0.6: archivo local de prueba y conciliación cronológica, sin sincronización central.
 // No modifica los saldos de los trabajadores ni constituye base sincronizada.
 function managerState(){state.manager??={journals:{},movements:{},incidents:[],lastResult:null};return state.manager}
+// Solo vista informativa: los saldos de Inicio y los movimientos importados nunca se sobrescriben.
+// La apertura se declara ANTES de la primera operación importada (no es un inventario actual).
+const vehicleTanks={camion:3,furgoneta:1};
+function parseOpening(g){
+ const o=g.opening;
+ if(!o||!Array.isArray(o.camion)||!Array.isArray(o.furgoneta)||o.camion.length!==3||o.furgoneta.length!==1||
+  ![o.cisterna,...o.camion,...o.furgoneta].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=25000))return null;
+ if(o.cisterna>25000||[...o.camion,...o.furgoneta].some(n=>n>1000))return null;
+ return o;
+}
+function reconcileManager(g){
+ const opening=parseOpening(g), imported=Object.values(g.movements||{});
+ const sorted=imported.slice().sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)||String(a.id).localeCompare(String(b.id)));
+ const results={}, problems=[];
+ if(!opening){
+  for(const m of sorted)results[m.id]={status:'pendiente',reason:'Indicar existencias iniciales para conciliar'};
+  return {ready:false,results,problems:[],accepted:0,pending:sorted.length,balances:null};
+ }
+ const balances={cisterna:opening.cisterna,camion:opening.camion.slice(),furgoneta:opening.furgoneta.slice()};
+ const blocked={cisterna:false,camion:false,furgoneta:false};
+ let accepted=0,pending=0;
+ // Todos los movimientos guardados se vuelven a calcular a cada importación.
+ for(const m of sorted){
+  let reason='';const v=m.vehicle,t=Number(m.tank)-1;
+  const qty=Number(m.litres),loss=Number(m.loss||0);
+  if(!['camion','furgoneta'].includes(v)||!Number.isInteger(t)||t<0||t>=vehicleTanks[v]||
+       !Number.isFinite(qty)||qty<=0||!Number.isFinite(loss)||loss<0||!Number.isFinite(Date.parse(m.time)))reason='Movimiento incompleto o inválido';
+  else if(blocked[v]||(m.type==='CARGA'&&blocked.cisterna))reason='Pendiente de resolver un movimiento anterior del vehículo o cisterna';
+  else if(m.type==='CARGA'){
+   // La merma de la carga debe corresponder al sobrante previo completo, o ser cero.
+   const previous=balances[v][t];
+   if(qty>balances.cisterna+1e-6)reason='Cisterna sin saldo suficiente o recepción de fábrica no registrada';
+   else if(loss>0&&Math.abs(loss-previous)>1e-6)reason='Merma diferente del sobrante teórico del tanque';
+   else if(previous-loss+qty>1000+1e-6)reason='Capacidad del tanque superada';
+   else{balances.cisterna=Number((balances.cisterna-qty).toFixed(6));balances[v][t]=Number((previous-loss+qty).toFixed(6))}
+  }else if(m.type==='DESCARGA'){
+   if(qty>balances[v][t]+1e-6)reason='Descarga superior al saldo disponible; puede faltar una carga';
+   else balances[v][t]=Number((balances[v][t]-qty).toFixed(6));
+  }else reason='Tipo de movimiento desconocido';
+  if(reason){
+   results[m.id]={status:'pendiente',reason};problems.push({id:m.id,vehicle:v,tank:t+1,reason});pending++;
+   // No seguir aprobando otros movimientos que dependan de stock ya dudoso.
+   if(['camion','furgoneta'].includes(v))blocked[v]=true;
+   if(m.type==='CARGA')blocked.cisterna=true;
+  }else{results[m.id]={status:'conciliado'};accepted++}
+ }
+ return {ready:true,results,problems,accepted,pending,balances};
+}
+function reconciliationPanel(g){
+ const r=reconcileManager(g),o=parseOpening(g),tanks=r.balances;
+ const quantity=(id,label,value,max)=>`<label class="field">${label}<input inputmode="decimal" type="number" step="0.01" min="0" max="${max}" id="${id}" value="${value===null?'':esc(value)}" placeholder="Litros iniciales"></label>`;
+ const openingCard=card(`<h3>Existencias iniciales de prueba</h3><p class="hint">Introduce cantidades existentes ANTES de la primera operación de todos los Excel importados. No son los litros actuales del móvil. No alteran el Inicio ni los movimientos. Si no conoces los saldos, deja pendiente la conciliación.</p><form id="openingForm" class="form">${quantity('openingCisterna','Cisterna principal (máx. 25.000 L)',o?.cisterna??null,25000)}<h4>Camión</h4>${[0,1,2].map(i=>quantity('openingCamion'+i,`Tanque ${i+1} (máx. 1.000 L)`,o?.camion[i]??null,1000)).join('')}<h4>Furgoneta</h4>${quantity('openingFurgoneta','Tanque 1 (máx. 1.000 L)',o?.furgoneta[0]??null,1000)}<button class="btn" type="submit">Guardar saldos iniciales y recalcular</button></form>${o?action('Quitar saldos iniciales de pruebas','clear-opening',true):''}`);
+ const overview=card(`<h3>Conciliación cronológica</h3><div class="row"><span>Movimientos conciliados</span><b>${r.accepted}</b></div><div class="row"><span>Movimientos pendientes</span><b>${r.pending}</b></div><p class="hint">Orden cronológico de los archivos importados. Al recibir más Excel se recalcula todo. Las cantidades no son saldos oficiales hasta comprobar los registros de apertura, cargas y recepciones de fábrica.</p>${!r.ready?'<div class="notice">Introduce los saldos iniciales para activar la simulación de conciliación.</div>':''}`);
+ const balanceCard=tanks?card(`<h3>Saldo calculado · No oficial</h3><div class="row"><span>Cisterna principal</span><b>${fmt(tanks.cisterna)} L</b></div>${['camion','furgoneta'].map(v=>`<h4>${v==='camion'?'Camión':'Furgoneta'} ${r.problems.some(p=>p.vehicle===v)?'· Pendiente':''}</h4>${tanks[v].map((n,i)=>`<div class="row"><span>Tanque ${i+1}</span><b>${fmt(n)} L</b></div>`).join('')}`).join('')}<p class="hint">Si hay incidencias, los saldos afectados solo reflejan movimientos anteriores validados, no el inventario actual.</p>`):'';
+ const problemCard=r.problems.length?card(`<h3>Movimientos pendientes</h3>${r.problems.slice(0,15).map(x=>`<p class="compact"><b>${esc(x.vehicle||'')}, tanque ${Number(x.tank)||'—'}</b> · ${esc(x.reason)} <span class="muted mono">${esc(String(x.id).slice(0,10))}</span></p>`).join('')}${r.problems.length>15?`<p class="hint">Y ${r.problems.length-15} incidencias más.</p>`:''}`):'';
+ return overview+openingCard+balanceCard+problemCard;
+}
+async function saveOpening(){
+ const n=id=>{const field=el(id);if(!field||field.value.trim()==='')return NaN;return Number(field.value)};
+ const opening={cisterna:n('openingCisterna'),camion:[0,1,2].map(i=>n('openingCamion'+i)),furgoneta:[n('openingFurgoneta')]};
+ if(!Number.isFinite(opening.cisterna)||opening.cisterna<0||opening.cisterna>25000||
+    [...opening.camion,...opening.furgoneta].some(x=>!Number.isFinite(x)||x<0||x>1000))return toast('Indica litros válidos en todos los campos');
+ if(!confirm('¿Guardar estos saldos iniciales ficticios y recalcular los Excel importados?'))return;
+ managerState().opening=opening;await persist();toast('Conciliación de pruebas recalculada');
+}
+
 function managerPage(){
  const g=managerState(),journals=Object.values(g.journals),movements=Object.values(g.movements);
  const last=g.lastResult;
- return `<h2 class="heading">Gerencia · Importar jornadas</h2><div class="notice">DEMOSTRACIÓN LOCAL. No sincroniza entre dispositivos, no autentica Gerencia y no modifica existencias. Solo archivos ficticios CDT-v0.4.</div>
+ return `<h2 class="heading">Gerencia · Importar jornadas</h2><div class="notice">DEMOSTRACIÓN LOCAL. Sin autenticación ni sincronización real. Conciliación de saldos ficticios, separada de Inicio. Solo Excel CDT-v0.4.</div>
  ${card(`<h3>Seleccionar Excel de jornada</h3><label class="field">Archivo .xlsx<input id="managerFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label><p class="hint">Al seleccionar el Excel, importa automáticamente los movimientos válidos. Un ID repetido nunca se contabiliza dos veces.</p>`)}
  ${last?card(`<h3>Último resultado de importación</h3><div class="row"><span>Archivo</span><b>${esc(last.file)}</b></div><div class="row"><span>Importados</span><b>${last.added}</b></div><div class="row"><span>Duplicados</span><b>${last.duplicates}</b></div><div class="row"><span>Incidencias</span><b>${last.issues}</b></div><p class="hint">${esc(last.note)}</p>`):''}
- ${card(`<h3>Archivo general local (pruebas)</h3><div class="row"><span>Jornadas registradas</span><b>${journals.length}</b></div><div class="row"><span>Movimientos únicos</span><b>${movements.length}</b></div><div class="row"><span>Litros de cargas importadas</span><b>${fmt(movements.filter(x=>x.type==='CARGA').reduce((s,x)=>s+x.litres,0))} L</b></div><div class="row"><span>Litros de descargas importadas</span><b>${fmt(movements.filter(x=>x.type==='DESCARGA').reduce((s,x)=>s+x.litres,0))} L</b></div><div class="row"><span>Incidencias acumuladas</span><b>${g.incidents.length}</b></div><p class="hint">Los totales representan registros importados, NO existencias conciliadas. Las cantidades de Inicio no cambian.</p>`)}
+ ${card(`<h3>Archivo general local (pruebas)</h3><div class="row"><span>Jornadas registradas</span><b>${journals.length}</b></div><div class="row"><span>Movimientos únicos</span><b>${movements.length}</b></div><div class="row"><span>Litros de cargas importadas</span><b>${fmt(movements.filter(x=>x.type==='CARGA').reduce((s,x)=>s+x.litres,0))} L</b></div><div class="row"><span>Litros de descargas importadas</span><b>${fmt(movements.filter(x=>x.type==='DESCARGA').reduce((s,x)=>s+x.litres,0))} L</b></div><div class="row"><span>Incidencias acumuladas</span><b>${g.incidents.length}</b></div><p class="hint">Los totales son movimientos archivados. La conciliación se muestra separada y no modifica Inicio.</p>`)}
  ${g.incidents.length?card(`<h3>Incidencias recientes</h3>${g.incidents.slice(-8).reverse().map(x=>`<p class="compact">${esc(x.file)} · ${esc(x.id)}: ${esc(x.reason)}</p>`).join('')}`):''}
  ${journals.length?card(`<h3>Jornadas importadas</h3>${journals.slice().reverse().slice(0,12).map(j=>`<div class="row"><span>${esc(j.date)} · ${esc(j.role)}</span><b>${esc(j.worker)}</b></div>`).join('')}`):''}
+ ${reconciliationPanel(g)}
  ${action('Descargar copia JSON','backup',true)}`;
 }
 async function importManagerFile(file){
@@ -228,9 +295,9 @@ async function reopenVisit(id){
 }
 async function finishVisit(){const v=state.openVisit;if(!v?.discharges.length)return toast('Registra al menos una descarga');if(!confirm(`Finalizar visita a ${v.client} con ${v.discharges.length} descargas?`))return;invalidateDraft('reparto');v.ended=now();state.visits.push(v);state.log.push({title:'Visita cerrada',desc:`${v.client} · ${v.discharges.length} descargas · ${fmt(v.discharges.reduce((s,d)=>s+d.liters,0))} L`,at:v.ended});state.openVisit=null;editingId=null;await persist();toast('Visita ficticia guardada')}
 function backup(){const bytes=new Blob([JSON.stringify({app:'control-de-tanques',phase:'demo-1',exported:now(),state},null,2)],{type:'application/json'});const url=URL.createObjectURL(bytes);const a=document.createElement('a');a.href=url;a.download=`control-tanques-DEMO-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='go-gerencia')return navigate('gerencia');if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
+async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='clear-opening'){if(confirm('¿Quitar los saldos iniciales ficticios? Los Excel importados y sus identificadores se conservarán.')){delete managerState().opening;await persist();}return;}if(act==='go-gerencia')return navigate('gerencia');if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
 async function handleChange(e){if(e.target.id==='vehicle'||e.target.id==='loadVehicle'){state.vehicle=e.target.value;await persist()}if(e.target.id==='chooseRole'){state.role=e.target.value;state.page='inicio';await persist()}if(e.target.id==='loadVehicle')render();if(e.target.id==='journalDate'){journalDate=e.target.value;render()}if(e.target.id==='journalWorker'){journalWorker=e.target.value.trim();}if(e.target.id==='managerFile'&&e.target.files?.[0])await importManagerFile(e.target.files[0]);}
-async function handleSubmit(e){if(!['loadForm','visitForm','dischargeForm','editForm'].includes(e.target.id))return;e.preventDefault();if(e.target.id==='loadForm')await processLoad(e.target);if(e.target.id==='visitForm')await startVisit();if(e.target.id==='dischargeForm')await discharge();if(e.target.id==='editForm')await saveCorrection()}
+async function handleSubmit(e){if(!['loadForm','visitForm','dischargeForm','editForm','openingForm'].includes(e.target.id))return;e.preventDefault();if(e.target.id==='openingForm')return saveOpening();if(e.target.id==='loadForm')await processLoad(e.target);if(e.target.id==='visitForm')await startVisit();if(e.target.id==='dischargeForm')await discharge();if(e.target.id==='editForm')await saveCorrection()}
 async function init(){try{db=await openDB();state=await read()||baseline();await write();document.addEventListener('click',e=>handleActions(e).catch(console.error));document.addEventListener('change',e=>handleChange(e).catch(console.error));document.addEventListener('submit',e=>handleSubmit(e).catch(console.error));el('roleButton').addEventListener('click',()=>{state.page='admin';persist()});render();setupUpdates().catch(console.warn)}catch(err){el('screen').innerHTML='<div class="notice error">No se puede abrir el almacenamiento local. Comprueba que no estás en navegación privada o que Safari permite datos de sitios web.</div>';console.error(err)}}init();
 
 
