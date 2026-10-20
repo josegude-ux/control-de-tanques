@@ -1,5 +1,1 @@
-{
-  "version": "0.6.0",
-  "release": "2026-10-20",
-  "notes": "Gerencia de prueba: importación automática y local de Excel CDT-v0.4, duplicados e incidencias. Sin sincronización ni saldos conciliados."
-}
+{"version":"0.7.0","release":"2026-10-20","notes":"Traspaso de cargas Gerencia a Reparto mediante Excel de pruebas; duplicados y pendientes."}

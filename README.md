@@ -1,29 +1,19 @@
-# Control de Tanques v0.6.0 · Conciliación de existencias (DEMO)
+# Control de Tanques — v0.7.0 (demostración)
 
-Esta versión conserva la v0.5 (cargas, visitas, correcciones, Excel, importación, anti-duplicados y guardado local) y añade en **Gerencia (demo) → Importar jornadas** un panel de conciliación.
+Actualización del proyecto v0.6, **sin eliminar datos de IndexedDB**.
 
-## Funcionamiento
-
-1. Los Excel CDT-v0.4 se siguen importando automáticamente y sus IDs no se duplican.
-2. Gerencia define los **saldos iniciales de prueba ANTERIORES a la primera operación importada** para cisterna, camión T1-T3 y furgoneta T1. Es obligatorio indicar todos los campos para conciliar.
-3. Los movimientos se ordenan por marca temporal, se validan contra el inventario simulado y se descuentan/suman en sus tanques correspondientes.
-4. Si falta una carga, hay saldo insuficiente, una merma incoherente o se supera capacidad, el movimiento queda **pendiente**, y se bloquean movimientos dependientes posteriores hasta aclarar la información.
-5. Cada importación adicional recalcula la conciliación desde los mismos saldos iniciales, sin duplicar litros; eliminar los saldos iniciales NO borra los Excel importados.
-6. La conciliación nunca modifica las cifras de Inicio ni los datos del trabajador.
+## Procedimiento de pruebas
+1. Cambiar a **Almacén**, registrar carga ficticia con contador confirmado y enviar jornada Excel.
+2. Cambiar a **Gerencia (demo)**, importar Excel de Almacén; configurar saldos iniciales coherentes para que las cargas queden conciliadas.
+3. En **Gerencia → Comunicar cargas al repartidor**, elegir vehículo y generar XLSX de traspaso.
+4. En **Reparto → Más → Recibir cargas de Gerencia**, importar el XLSX. Cada carga con ID único se aplica **una sola vez**; las cargas que no cuadren con el stock local quedan pendientes.
+5. Repetir la importación: debe mostrar duplicados y NO cambiar los litros.
 
 ## Limitaciones importantes
-
-- **SOLO DEMOSTRACIÓN CON DATOS FICTICIOS**. Los saldos calculados NO son inventario oficial.
-- No se implementan aún recibos de fábrica ni conciliación formal de declaraciones provisionales. Esos eventos deben modelarse antes de usar existencias reales.
-- Sin control real de accesos: Gerencia es un selector visual, no autenticación. El almacenamiento de Gerencia sigue siendo local y no sincroniza PC/móvil.
-- Sin tiempos cifrados. No utilizar con datos reales.
-- La conciliación requiere que los saldos iniciales precedan a todos los movimientos importados y que no falten operaciones de ese período.
-
-## Prueba sugerida
-
-1. Importar el Excel de reparto de 450 L ya usado en v0.5 (si está importado, no volver a importarlo).
-2. Seleccionar Gerencia (demo) y abrir su panel; introducir apertura ficticia de 1.000 L en camión T1, y otros saldos ficticios. Verificar descuento a 550 L T1 si ese es el único movimiento.
-3. Importar el mismo Excel otra vez: 0 nuevos, 1 duplicado. El saldo calculado no debe variar.
-4. Quitar saldos iniciales de prueba: los registros importados se conservan y se marcan pendientes.
-
-Subir los archivos sueltos del ZIP a la raíz de GitHub Pages. No limpiar datos de Safari ni reinstalar la PWA.
+- Prototipo local y **sin autenticación**. No subir ni importar datos reales.
+- En un mismo dispositivo, los perfiles demostrativos comparten almacenamiento y pueden reflejar ya las cargas registradas por Almacén. Para probar recepción real usar otro navegador/dispositivo con existencias iniciales compatibles, sin borrar datos anteriores.
+- Traspasos exportan las **cargas conciliadas** existentes, no un saldo absoluto autorizado.
+- Las incidencias de conciliación deben revisarse. No se sobrescriben existencias ni se ignoran duplicados.
+- El XLSX **no está firmado criptográficamente**. No usar con datos empresariales sin seguridad adicional.
+- Sin base compartida de Gerencia, cifrado de tiempos ni control de permisos. Todo sigue siendo ficticio.
+- Para actualizar GitHub Pages, subir los 12 archivos a la raíz del repositorio; conservar el mismo origen URL y no borrar datos Safari.

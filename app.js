@@ -1,7 +1,7 @@
 'use strict';
 // Prototipo fase 1: datos de demostración. No autentica perfiles ni exporta Excel.
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.6.0';
+const APP_VERSION='0.7.0';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -56,7 +56,7 @@ function canReopen(v){
 }
 function historyPage(){const movements=[...state.log].reverse();return `<h2 class="heading">Historial local</h2><div class="notice">Se muestran también las correcciones, los reinicios del contador y la reapertura de visitas. Las jornadas se pueden exportar desde Más → Enviar jornada.</div>${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}`}
 const updatePanel=()=>card(`<h3>Actualizaciones</h3><div class="row"><span>Versión instalada</span><b class="mono">${APP_VERSION}</b></div><p class="update-info">La app busca nuevas versiones al abrirse o regresar a primer plano si hay conexión. No se eliminan los datos locales.</p>${action('Buscar actualizaciones','check-update',true)}${updateAvailable?`<div class="update-ready"><h4>Nueva versión disponible</h4><p class="compact">Puedes instalar la nueva versión sin borrar los movimientos de prueba.</p>${action('Actualizar ahora','apply-update')}</div>`:''}<p class="update-info" id="updateStatus">${navigator.onLine?'Para buscar una nueva versión, toca el botón.':'Sin conexión: se mantiene la versión instalada.'}</p>`);
-function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Enviar jornada · Excel</h3><p class="hint">Un Excel por fecha y perfil. Funciona sin conexión. Reenvía el mismo archivo cuando ya esté marcado como enviado.</p>${action('Abrir envío de jornada','go-jornada')}`)}${updatePanel()}${state.role==='gerencia'?card(`<h3>Gerencia · Excel recibidos</h3><p class="hint">Solo importaciones locales de pruebas; no hay sincronización ni acceso seguro.</p>${action('Abrir importador de Excel','go-gerencia')}`):''}${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Implementado en demo: correcciones auditadas, reinicio de contador y reapertura de visitas. Excel de jornada en fase de pruebas. Implementada: importación local de pruebas por Gerencia. En pruebas: conciliación de existencias. Pendiente: sincronización, control real de tiempos, permisos seguros, cifrado y conexión de Gerencia.</p>`)}`}
+function adminPage(){return `<h2 class="heading">Configuración de pruebas</h2>${card(`<h3>Enviar jornada · Excel</h3><p class="hint">Un Excel por fecha y perfil. Funciona sin conexión. Reenvía el mismo archivo cuando ya esté marcado como enviado.</p>${action('Abrir envío de jornada','go-jornada')}`)}${updatePanel()}${state.role==='reparto'?card(`<h3>Recibir cargas de Gerencia · Pruebas</h3><p class="hint">Importa el Excel de traspaso correspondiente a tu vehículo. Las cargas repetidas no se aplican dos veces y las incoherentes se dejan pendientes.</p><label class="field">Archivo de cargas .xlsx<input id="handoffFile" type="file" accept=".xlsx"></label><p class="hint">${esc(handoffSummary())}</p>`):''}${state.role==='gerencia'?card(`<h3>Gerencia · Excel recibidos</h3><p class="hint">Solo importaciones locales de pruebas; no hay sincronización ni acceso seguro.</p>${action('Abrir importador de Excel','go-gerencia')}`):''}${card(`<h3>Perfil de demostración</h3><p class="hint">La selección de perfil solo cambia la interfaz. No protege información sensible.</p><label class="field">Vista<select id="chooseRole"><option value="almacen" ${state.role==='almacen'?'selected':''}>Almacén</option><option value="reparto" ${state.role==='reparto'?'selected':''}>Reparto</option><option value="gerencia" ${state.role==='gerencia'?'selected':''}>Gerencia (demo)</option></select></label>`)}${card(`<h3>Copia de seguridad de pruebas</h3><p class="hint">Puedes descargar un JSON con el estado de prueba para guardarlo. No es el Excel diario de operaciones.</p>${action('Descargar copia JSON','backup',true)}`)}${card(`<h3>Restablecer demostración</h3><p>Elimina únicamente los datos de prueba almacenados en este navegador.</p>${action('Reiniciar datos ficticios','reset',true)}`)}${card(`<h3>Estado del desarrollo</h3><p class="compact">Fase 1: interfaz móvil, PWA y persistencia local de movimientos de prueba. Implementado en demo: correcciones auditadas, reinicio de contador y reapertura de visitas. Excel de jornada en fase de pruebas. Implementada: importación local de pruebas por Gerencia. En pruebas: conciliación de existencias. Pendiente: sincronización, control real de tiempos, permisos seguros, cifrado y conexión de Gerencia.</p>`)}`}
 
 // v0.4 · Excel local por día y perfil. No hay identificación auténtica ni control de permisos todavía.
 const localDay=iso=>{if(!iso)return '';const d=new Date(iso);if(Number.isNaN(d.getTime()))return '';return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
@@ -193,6 +193,49 @@ async function saveOpening(){
  managerState().opening=opening;await persist();toast('Conciliación de pruebas recalculada');
 }
 
+// Fase v0.7: intercambio de cargas en Excel (demostración local, sin autenticación).
+const handoffMarker='CDT-TRASPASO-v0.7';
+function handoffSummary(){const a=state.receivedLoads||{};return `Cargas recibidas en este dispositivo: ${Object.keys(a).length}. Pendientes: ${(state.pendingLoads||[]).length}.`}
+function handoffRows(vehicle){
+ const g=managerState(),recon=reconcileManager(g);
+ const loads=Object.values(g.movements||{}).filter(m=>m.type==='CARGA'&&m.vehicle===vehicle&&recon.results[m.id]?.status==='conciliado').sort((a,b)=>Date.parse(a.time)-Date.parse(b.time)||a.id.localeCompare(b.id));
+ const stamp=now(),tag=uid();
+ return {loads,tabs:[['Traspaso',[['Campo','Valor'],['Formato',handoffMarker],['Entorno','SOLO DEMOSTRACIÓN'],['Vehículo',vehicle],['ID traspaso',tag],['Generado UTC',stamp],['Nº cargas',loads.length]]],['Cargas',[['ID carga','Vehículo','Tanque','Litros cargados','Merma','Fecha y hora','ID jornada'],...loads.map(m=>[m.id,m.vehicle,m.tank,m.litres,m.loss||0,m.time,m.journalId])]] ]};
+}
+async function exportHandoff(){
+ if(state.role!=='gerencia')return;
+ const vehicle=el('handoffVehicle')?.value||'camion',r=handoffRows(vehicle);
+ if(!r.loads.length)return toast('No hay cargas conciliadas para ese vehículo. Importa primero un Excel de Almacén y revisa los saldos iniciales.');
+ const filename=`control-tanques-DEMO-cargas-${vehicle}-${new Date().toISOString().slice(0,10)}.xlsx`;
+ const blob=SheetXLSX.generate(r.tabs),file=new File([blob],filename,{type:blob.type});
+ try{if(navigator.canShare?.({files:[file]})&&navigator.share)await navigator.share({files:[file],title:'Cargas para reparto · DEMO'});
+ else{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000)}toast('Archivo de traspaso preparado. Envía solo al repartidor correcto.');}
+ catch(err){if(err.name!=='AbortError'){console.error(err);toast('Error al compartir el archivo')}else toast('Envío cancelado')}
+}
+async function receiveHandoff(file){
+ if(state.role!=='reparto')return toast('Selecciona Reparto');
+ if(state.openVisit)return toast('Finaliza la visita antes de importar cargas');
+ try{
+  const parsed=CDTTransfer.parse(await file.arrayBuffer());
+  if(parsed.vehicle!==state.vehicle)return toast('El archivo corresponde a otro vehículo. Cambia de vehículo antes de importar.');
+  state.receivedLoads??={};state.pendingLoads??=[];
+  let added=0,duplicates=0,pending=0;
+  for(const m of parsed.loads){
+   if(state.receivedLoads[m.id]||(state.loads||[]).some(l=>l.id===m.id)){duplicates++;continue}
+   const t=m.tank-1,previous=state.tanks[m.vehicle][t];
+   const proposed=previous-m.loss+m.litres;
+   if(m.loss>0&&Math.abs(m.loss-previous)>0.001||proposed<0||proposed>1000){
+    if(!state.pendingLoads.some(x=>x.id===m.id))state.pendingLoads.push({...m,reason:'No coincide el saldo local o la capacidad del tanque; requiere revisión de Gerencia'});
+    pending++;continue;
+   }
+   state.tanks[m.vehicle][t]=Number(proposed.toFixed(4));state.receivedLoads[m.id]={...m,receivedAt:now()};
+   state.pendingLoads=state.pendingLoads.filter(x=>x.id!==m.id);
+   state.log.push({title:'Carga de Gerencia (demo)',desc:`${m.vehicle}, tanque ${m.tank}: +${fmt(m.litres)} L, merma ${fmt(m.loss)} L. ID ${m.id}`,at:now()});added++;
+  }
+  state.lastHandoff={file:file.name,added,duplicates,pending,at:now()};
+  await persist();toast(`Cargas: ${added} aplicadas, ${duplicates} repetidas, ${pending} pendientes`);
+ }catch(err){console.error(err);toast(err.message||'Archivo de cargas inválido')}
+}
 function managerPage(){
  const g=managerState(),journals=Object.values(g.journals),movements=Object.values(g.movements);
  const last=g.lastResult;
@@ -203,6 +246,7 @@ function managerPage(){
  ${g.incidents.length?card(`<h3>Incidencias recientes</h3>${g.incidents.slice(-8).reverse().map(x=>`<p class="compact">${esc(x.file)} · ${esc(x.id)}: ${esc(x.reason)}</p>`).join('')}`):''}
  ${journals.length?card(`<h3>Jornadas importadas</h3>${journals.slice().reverse().slice(0,12).map(j=>`<div class="row"><span>${esc(j.date)} · ${esc(j.role)}</span><b>${esc(j.worker)}</b></div>`).join('')}`):''}
  ${reconciliationPanel(g)}
+ ${card(`<h3>Comunicar cargas al repartidor · Pruebas</h3><p class="hint">Se exportan únicamente cargas conciliadas de Almacén. No incluye duraciones ni datos reales. Si no hay cargas conciliadas, no se generará archivo.</p><label class="field">Vehículo<select id="handoffVehicle"><option value="camion">Camión</option><option value="furgoneta">Furgoneta</option></select></label>${action('Generar Excel de cargas','export-handoff')}`)}
  ${action('Descargar copia JSON','backup',true)}`;
 }
 async function importManagerFile(file){
@@ -295,8 +339,8 @@ async function reopenVisit(id){
 }
 async function finishVisit(){const v=state.openVisit;if(!v?.discharges.length)return toast('Registra al menos una descarga');if(!confirm(`Finalizar visita a ${v.client} con ${v.discharges.length} descargas?`))return;invalidateDraft('reparto');v.ended=now();state.visits.push(v);state.log.push({title:'Visita cerrada',desc:`${v.client} · ${v.discharges.length} descargas · ${fmt(v.discharges.reduce((s,d)=>s+d.liters,0))} L`,at:v.ended});state.openVisit=null;editingId=null;await persist();toast('Visita ficticia guardada')}
 function backup(){const bytes=new Blob([JSON.stringify({app:'control-de-tanques',phase:'demo-1',exported:now(),state},null,2)],{type:'application/json'});const url=URL.createObjectURL(bytes);const a=document.createElement('a');a.href=url;a.download=`control-tanques-DEMO-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),15000)}
-async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='clear-opening'){if(confirm('¿Quitar los saldos iniciales ficticios? Los Excel importados y sus identificadores se conservarán.')){delete managerState().opening;await persist();}return;}if(act==='go-gerencia')return navigate('gerencia');if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
-async function handleChange(e){if(e.target.id==='vehicle'||e.target.id==='loadVehicle'){state.vehicle=e.target.value;await persist()}if(e.target.id==='chooseRole'){state.role=e.target.value;state.page='inicio';await persist()}if(e.target.id==='loadVehicle')render();if(e.target.id==='journalDate'){journalDate=e.target.value;render()}if(e.target.id==='journalWorker'){journalWorker=e.target.value.trim();}if(e.target.id==='managerFile'&&e.target.files?.[0])await importManagerFile(e.target.files[0]);}
+async function handleActions(e){const page=e.target.closest('[data-page]');if(page){await navigate(page.dataset.page);return}const act=e.target.closest('[data-act]')?.dataset.act;if(act==='go-admin')return navigate('admin');if(act==='clear-opening'){if(confirm('¿Quitar los saldos iniciales ficticios? Los Excel importados y sus identificadores se conservarán.')){delete managerState().opening;await persist();}return;}if(act==='go-gerencia')return navigate('gerencia');if(act==='export-handoff')return exportHandoff();if(act==='go-jornada')return navigate('jornada');if(act==='make-xlsx')return sendJournal(false);if(act==='resend-xlsx')return sendJournal(true);if(act==='mark-sent')return markJournalSent();if(act==='go-carga')return navigate('carga');if(act==='go-visita')return navigate('visita');if(act==='finish-visit')return finishVisit();if(act==='reset-meter')return resetMeter();if(act==='cancel-edit'){editingId=null;return render()}if(act==='edit-discharge'){editingId=e.target.closest('[data-id]')?.dataset.id;return render()}if(act==='reopen-visit')return reopenVisit(e.target.closest('[data-id]')?.dataset.id);if(act==='backup')return backup();if(act==='check-update')return checkForUpdates(true);if(act==='apply-update')return applyUpdate();if(act==='reset'){if(confirm('¿Eliminar TODOS los movimientos de demostración de este dispositivo?')){state=baseline();await persist()}}}
+async function handleChange(e){if(e.target.id==='vehicle'||e.target.id==='loadVehicle'){state.vehicle=e.target.value;await persist()}if(e.target.id==='chooseRole'){state.role=e.target.value;state.page='inicio';await persist()}if(e.target.id==='loadVehicle')render();if(e.target.id==='journalDate'){journalDate=e.target.value;render()}if(e.target.id==='journalWorker'){journalWorker=e.target.value.trim();}if(e.target.id==='managerFile'&&e.target.files?.[0])await importManagerFile(e.target.files[0]);if(e.target.id==='handoffFile'&&e.target.files?.[0])await receiveHandoff(e.target.files[0]);}
 async function handleSubmit(e){if(!['loadForm','visitForm','dischargeForm','editForm','openingForm'].includes(e.target.id))return;e.preventDefault();if(e.target.id==='openingForm')return saveOpening();if(e.target.id==='loadForm')await processLoad(e.target);if(e.target.id==='visitForm')await startVisit();if(e.target.id==='dischargeForm')await discharge();if(e.target.id==='editForm')await saveCorrection()}
 async function init(){try{db=await openDB();state=await read()||baseline();await write();document.addEventListener('click',e=>handleActions(e).catch(console.error));document.addEventListener('change',e=>handleChange(e).catch(console.error));document.addEventListener('submit',e=>handleSubmit(e).catch(console.error));el('roleButton').addEventListener('click',()=>{state.page='admin';persist()});render();setupUpdates().catch(console.warn)}catch(err){el('screen').innerHTML='<div class="notice error">No se puede abrir el almacenamiento local. Comprueba que no estás en navegación privada o que Safari permite datos de sitios web.</div>';console.error(err)}}init();
 
