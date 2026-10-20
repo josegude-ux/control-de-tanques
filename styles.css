@@ -28,3 +28,30 @@
 #toast{background:#36242a}
 @media (max-width:420px){.top{padding-left:12px;padding-right:12px}.brand-logo-wrap{width:65px;min-width:65px;height:44px}.brand h1{font-size:clamp(16px,4.2vw,20px)}.brand small{font-size:8px;letter-spacing:.7px}.brand{gap:7px}.pill{font-size:11px;padding:8px}}
 @media (max-width:360px){.brand-logo-wrap{width:53px;min-width:53px}.brand h1{font-size:15px}.brand small{font-size:7px}.pill{padding:7px 6px;font-size:10px}}
+
+/* v0.2.1: logo aportado por el usuario, dimensiones estrictas y sin desbordamiento */
+html, body { max-width:100%; }
+.top { width:100%; max-width:100%; min-width:0; overflow:hidden; }
+.brand { min-width:0; flex:1 1 auto; }
+.brand > div:last-child { min-width:0; }
+.brand h1 { overflow-wrap:anywhere; }
+.brand-logo-wrap {
+  width:54px; min-width:54px; max-width:54px; height:54px;
+  flex:0 0 54px; border-radius:12px; background:#fff;
+  padding:7px; overflow:hidden;
+}
+.brand-logo, img.brand-logo {
+  display:block; width:40px !important; height:40px !important;
+  max-width:40px !important; max-height:40px !important;
+  min-width:0; object-fit:contain; filter:none !important;
+  flex:none; position:static;
+}
+.pill { flex:none; }
+@media (max-width:420px){
+ .brand-logo-wrap { width:46px; min-width:46px; max-width:46px; height:46px; flex-basis:46px; padding:5px; }
+ .brand-logo, img.brand-logo { width:36px !important; height:36px !important; max-width:36px !important; max-height:36px !important; }
+}
+@media (max-width:360px){
+ .brand-logo-wrap { width:42px; min-width:42px; max-width:42px; height:42px; flex-basis:42px; padding:5px; }
+ .brand-logo, img.brand-logo { width:32px !important; height:32px !important; max-width:32px !important; max-height:32px !important; }
+}

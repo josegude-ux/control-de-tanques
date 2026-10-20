@@ -1,4 +1,4 @@
-# Control de Tanques — Demo local v0.2 · Identidad Mahou
+# Control de Tanques — Demo local v0.2.1 · Logo Mahou local corregido
 
 **Prototipo solo con datos ficticios. No usar con operaciones reales.**
 
@@ -8,11 +8,14 @@
 - Conserva la clave de datos IndexedDB original (`cdt_demo_v1`) para preservar movimientos de la demo.
 - Versión de caché del service worker renovada.
 
-## Fuente y disponibilidad del logo
-El logotipo Mahou referencia el archivo original `MahouLogo.svg` atribuido a Grupo Mahou-San Miguel en [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:MahouLogo.svg). **El archivo gráfico no se ha podido descargar e incluir físicamente en el ZIP**. Necesita internet para mostrarse desde su enlace; sin conexión se sustituye por el texto «Mahou». Para uso plenamente offline hay que incorporar una copia local autorizada del SVG. La marca comercial sigue sujeta a derechos de marca; confirma autorización para usarla.
+## Logo Mahou
+- Usa el PNG que has compartido en este chat, convertido a fondo transparente.
+- Se incorpora localmente como `mahou-logo.png`: no depende de conexiones ni imágenes externas.
+- Se limita expresamente a 40 × 40 px (36 × 36 en móvil), en cabecera, sin alterar la lógica de la app.
+- El uso de la marca debe estar autorizado por el titular si se distribuye la aplicación.
 
 ## Publicar
-Extrae los archivos del ZIP y súbelos a la raíz de `control-de-tanques` en GitHub, sustituyendo los siete archivos de v0.1. Github Pages actualizará la aplicación. No borres los datos del navegador ni uses «Reiniciar datos ficticios» si quieres conservar las pruebas anteriores.
+Extrae los archivos del ZIP y súbelos a la raíz de `control-de-tanques` en GitHub, sustituyendo los archivos anteriores y añadiendo `mahou-logo.png`. Github Pages actualizará la aplicación. No borres los datos del navegador ni uses «Reiniciar datos ficticios» si quieres conservar las pruebas anteriores.
 
 ## Funciones existentes
 - Registro local de cargas por tanque, merma del sobrante y control de capacidad.
