@@ -1,5 +1,5 @@
 {
-  "version": "0.9.7",
+  "version": "0.9.8",
   "release": "2026-10-20",
-  "notes": "Catálogo de clientes local de Gerencia: ficha, edición, días habituales y previsión (DEMO)."
+  "notes": "Ficha de clientes: tanques 250/500 L, válvula, días compactos y previsión fuera del catálogo (DEMO)."
 }

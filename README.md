@@ -1,7 +1,10 @@
-# Control de Tanques v0.9.7 (DEMO)
+# Control de Tanques v0.9.8 — DEMO
 
-Novedad: Gerencia → Más → Catálogo de clientes. Alta, edición y eliminación local de fichas con nombre, población, número de tanques, permiso municipal informativo, día de cierre, días habituales de reparto y cantidad prevista. Se conserva en IndexedDB y copia JSON.
+Mejoras del catálogo local de Gerencia:
+- Tanques de 250 L y 500 L por separado y capacidad calculada.
+- Tipo de válvula automática o manual por cliente.
+- Días de reparto más compactos.
+- Eliminación de la previsión de litros de la ficha; se definirá en la planificación de cada entrega (todavía no implementada).
+- Clientes existentes se conservan; las capacidades antiguas se dejan pendientes de revisión, sin suponer su tamaño.
 
-No incluye aún planificación semanal por vehículo, traspaso de rutas a Reparto ni avisos administrativos. Las cargas, conciliación y envíos siguen siendo de prueba.
-
-Actualizar archivos en GitHub Pages sin borrar datos de Safari. Guardar una copia JSON antes de actualizar.
+Conserva los datos IndexedDB del navegador. Sigue siendo una demostración sin sincronización real.

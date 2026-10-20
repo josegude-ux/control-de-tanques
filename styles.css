@@ -71,3 +71,12 @@ html, body { max-width:100%; }
 
 /* v0.9.4: auditoría de conciliación */
 .audit-movement{padding:12px 0;border-bottom:1px solid #e9dfe0;overflow-wrap:anywhere}.audit-movement:last-child{border-bottom:0}.audit-movement .hint{margin:5px 0}
+
+/* v0.9.8: ficha compacta de clientes */
+.customer-form .field{margin:10px 0 3px}
+.customer-tanks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.customer-tanks .field{min-width:0}
+.customer-capacity{margin:8px 0 12px;padding:10px 12px;border-radius:10px;background:#f5f0e7;font-size:14px;font-weight:700}
+.customer-days{margin:13px 0 7px;font-size:14px}
+.customer-days-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px;margin-top:7px}
+.customer-days-grid .check{padding:5px 0;align-items:center}
