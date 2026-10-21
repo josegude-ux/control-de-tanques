@@ -26,5 +26,13 @@ const CDTTransfer=(()=>{
    seen.add(id);return {id,vehicle,tank,litres,loss,time,journalId};
   });return {vehicle:m['Vehículo'],loads,id:m['ID traspaso']};
  }
- return {parse};
+ function parseStock(buffer){
+  const fs=filesFrom(buffer),meta=rows(fs['xl/worksheets/sheet1.xml']),data=rows(fs['xl/worksheets/sheet2.xml']);
+  const m=Object.fromEntries(meta.slice(1).map(r=>[r[0],r[1]]));
+  if(m.Formato!=='CDT-EXISTENCIAS-v1'||m.Entorno!=='SOLO DEMOSTRACIÓN'||!['almacen','gerencia'].includes(m.Origen)||!['camion','furgoneta'].includes(m['Vehículo'])||!m['ID inventario']||!Number.isFinite(Date.parse(m['Fecha UTC'])))throw Error('No es un Excel de existencias CDT válido');
+  if(data.length!==(m['Vehículo']==='camion'?4:2)||data[0]?.[0]!=='Tanque')throw Error('Tanques incompletos');
+  const amounts=data.slice(1).map((r,i)=>{const n=Number(r[1]);if(Number(r[0])!==i+1||r[1]===''||!Number.isFinite(n)||n<0||n>1000)throw Error('Saldo de tanque inválido');return n});
+  return {id:m['ID inventario'],vehicle:m['Vehículo'],source:m.Origen,at:m['Fecha UTC'],amounts};
+ }
+ return {parse,parseStock};
 })();
