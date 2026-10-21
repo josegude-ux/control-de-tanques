@@ -1,1 +1,1 @@
-Control de Tanques v0.9.19 · DEMO. Selector de perfiles táctil y eliminación segura de la última visita ficticia no enviada con restauración de litros. No usar para operaciones reales sin validación. Guardar copia JSON antes de probar.
+Control de Tanques v0.9.20 · DEMO. Corrección específica del selector superior: el menú de perfiles ya no queda recortado por overflow:hidden de la cabecera. Conserva los perfiles locales y las funciones de v0.9.19. Hacer copia JSON antes de actualizar.

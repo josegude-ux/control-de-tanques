@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.19';
+const APP_VERSION='0.9.20';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -754,7 +754,7 @@ async function applyUpdate(){
     }
     // Invalidar la caché de recursos de la versión anterior antes de recargar.
     if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')).map(k=>caches.delete(k)))}
-    const next=new URL(location.href); next.searchParams.set("app_version", "0.9.19"); location.replace(next.href);
+    const next=new URL(location.href); next.searchParams.set("app_version", "0.9.20"); location.replace(next.href);
   }catch(err){console.error(err);updating=false;toast('No se completó la actualización. Vuelve a intentarlo.');}
 }
 async function setupUpdates(){

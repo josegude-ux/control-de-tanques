@@ -98,5 +98,11 @@ html, body { max-width:100%; }
 
 .plan-received-item{padding:12px 0;border-bottom:1px solid #e9dfe0}.plan-received-item:last-child{border-bottom:0}
 
-/* v0.9.19: selector táctil estable */
+/* v0.9.20: selector táctil estable */
 .role-switch{position:relative;z-index:50}.role-picker{position:absolute;right:0;top:calc(100% + 8px);width:min(250px,85vw);min-width:210px;padding:7px;background:white;border:1px solid #e4c6cc;border-radius:15px;box-shadow:0 10px 30px #0003;z-index:55}.role-picker button{display:block;width:100%;text-align:left;padding:15px 13px;border:0;background:white;color:#34272b;font-weight:700;border-radius:9px;min-height:48px}.role-picker button.selected{background:#f7e6e9;color:#a71530}.role-picker button+button{margin-top:3px}
+
+/* v0.9.20: el menú debe sobresalir de la cabecera; antes overflow:hidden lo recortaba */
+.top{overflow:visible!important;position:relative;z-index:70;isolation:isolate}
+.role-switch{position:relative;z-index:71;flex:0 0 auto}
+#roleButton{position:relative;z-index:72;min-height:40px;touch-action:manipulation}
+#rolePicker{z-index:73;max-height:70vh;overflow-y:auto}
