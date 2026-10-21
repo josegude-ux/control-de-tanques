@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.21';
+const APP_VERSION='0.9.22';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -152,7 +152,7 @@ function canReopen(v){
 function testVisitBlockReason(v){
  if(state.role!=='reparto')return 'Solo disponible en Reparto';
  if(!v||!v.ended)return 'La visita no está cerrada';
- if(v.sentAt)return 'La visita ya fue enviada';
+ if(v.sentAt)return 'La visita ya fue enviada. Requiere anulación comunicada a Gerencia, no borrado local';
  if(state.openVisit)return 'Hay una visita abierta';
  if((state.visits||[]).some(x=>x.id!==v.id&&x.vehicle===v.vehicle&&x.started>v.ended))return 'Hay visitas posteriores en este vehículo';
  if((state.loads||[]).some(x=>x.vehicle===v.vehicle&&x.at>v.ended))return 'Hay cargas posteriores en este vehículo';
@@ -291,7 +291,7 @@ function currentBatchKey(date,role){
 }
 function latestSentKey(date,role){const base=journalKey(date,role),keys=Object.keys(state.sentJournals||{}).filter(k=>k===base||k.startsWith(base+'|'));return keys.sort((a,b)=>Number((b.split('|')[2]||1))-Number((a.split('|')[2]||1)))[0]||base;}
 
-function invalidateDraft(role){if(!state.preparedJournals)return;for(const k of Object.keys(state.preparedJournals))if(k.endsWith('|'+role))delete state.preparedJournals[k];}
+function invalidateDraft(role){if(!state.preparedJournals)return;for(const k of Object.keys(state.preparedJournals))if(k.split('|')[1]===role)delete state.preparedJournals[k];}
 function journalSources(date,role){
  const loads=role==='almacen'?state.loads.filter(l=>localDay(l.at)===date&&!l.sentAt):[];
  const visits=role==='reparto'?state.visits.filter(v=>localDay(v.started)===date&&!v.sentAt):[];
@@ -324,7 +324,7 @@ function journalTabs(s){
 function journalPage(){
  const role=journalRole();if(!role)return `<h2 class="heading">Enviar jornada</h2><div class="notice">Cambia a Almacén o Reparto para exportar la jornada de ese perfil. Gerencia tendrá su propio sistema de importación en la siguiente fase.</div>${action('Volver a Más','go-admin',true)}`;
  const sent=state.sentJournals?.[latestSentKey(journalDate,role)];const batchKey=currentBatchKey(journalDate,role);const {loads,visits}=journalSources(journalDate,role),items=role==='almacen'?loads.length:visits.reduce((n,v)=>n+v.discharges.length,0),liters=role==='almacen'?loads.reduce((n,v)=>n+v.amount,0):visits.reduce((n,v)=>n+v.discharges.reduce((t,d)=>t+d.liters,0),0);
- return `<h2 class="heading">Enviar jornada</h2><div class="notice">Exportación Excel local · SOLO DATOS DE PRUEBA. No hay envío automático ni recepción confirmada.</div><label class="field">Fecha de la jornada<input type="date" id="journalDate" value="${esc(journalDate)}"></label><label class="field">Operario (etiqueta de prueba)<input id="journalWorker" value="${esc(journalWorker)}" maxlength="70" placeholder="Operario de prueba"></label>${card(`<div class="row"><b>Perfil</b><b>${role==='almacen'?'Almacén':'Reparto'}</b></div><div class="row"><span>Movimientos</span><b>${items}</b></div><div class="row"><span>Litros</span><b>${fmt(liters)} L</b></div><div class="row"><span>Estado</span><b>${items?'Movimientos nuevos pendientes':sent?'Último lote enviado':'Sin movimientos'}</b></div>`)}${sent?card(`<h3>Último lote enviado</h3><p class="hint">Puedes reenviar el último Excel sin generar identificadores nuevos.</p>${action('Reenviar mismo Excel','resend-xlsx')}`):''}${items?`${state.openVisit&&localDay(state.openVisit.started)===journalDate?`<div class="notice error">Cierra primero la visita abierta de esta fecha.</div>`:''}${action('Generar y compartir Excel','make-xlsx')}<p class="hint">Después de comprobar que has compartido el archivo, podrás marcar la jornada como enviada. Si cancelas el envío, déjala editable.</p>${state.preparedJournals?.[batchKey]?action('Marcar jornada como enviada','mark-sent',true):''}`:''}<p class="hint">El archivo conserva las operaciones, correcciones y reinicios. No borra nada del móvil. Las horas guardadas son marcas de eventos; todavía NO existe control real de duración ni cifrado.</p>${action('Volver a Más','go-admin',true)}`;
+ return `<h2 class="heading">Envíos manuales por lotes</h2><div class="notice">Puedes enviar varias veces en un mismo día, sin recordatorios. Cada lote incluye solo movimientos pendientes. Exportación Excel local · SOLO DATOS DE PRUEBA. No hay envío automático ni recepción confirmada.</div><label class="field">Fecha de la jornada<input type="date" id="journalDate" value="${esc(journalDate)}"></label><label class="field">Operario (etiqueta de prueba)<input id="journalWorker" value="${esc(journalWorker)}" maxlength="70" placeholder="Operario de prueba"></label>${card(`<div class="row"><b>Perfil</b><b>${role==='almacen'?'Almacén':'Reparto'}</b></div><div class="row"><span>Movimientos</span><b>${items}</b></div><div class="row"><span>Litros</span><b>${fmt(liters)} L</b></div><div class="row"><span>Estado</span><b>${items?'Movimientos nuevos pendientes':sent?'Último lote enviado':'Sin movimientos'}</b></div>`)}${sent?card(`<h3>Último lote enviado</h3><p class="hint">Puedes reenviar el último Excel sin generar identificadores nuevos.</p>${action('Reenviar mismo Excel','resend-xlsx')}`):''}${items?`${state.openVisit&&localDay(state.openVisit.started)===journalDate?`<div class="notice error">Cierra primero la visita abierta de esta fecha.</div>`:''}${action('Generar y compartir Excel','make-xlsx')}<p class="hint">Después de comprobar que has compartido el archivo, podrás marcar la jornada como enviada. Si cancelas el envío, déjala editable.</p>${state.preparedJournals?.[batchKey]?action('Confirmar envío de este lote','mark-sent',true):''}`:''}<p class="hint">El archivo conserva las operaciones, correcciones y reinicios. No borra nada del móvil. Las horas guardadas son marcas de eventos; todavía NO existe control real de duración ni cifrado.</p>${action('Volver a Más','go-admin',true)}`;
 }
 async function sendJournal(resend){
  const role=journalRole();if(!role)return toast('Selecciona perfil Almacén o Reparto');
@@ -333,7 +333,7 @@ async function sendJournal(resend){
  if(!resend&&!journalSources(journalDate,role)[role==='almacen'?'loads':'visits'].length)return toast('No hay movimientos cerrados para esa jornada');
  let snapshot;
  if(resend){snapshot=state.sentJournals?.[key];if(!snapshot)return toast('No hay una jornada enviada para reenviar');}
- else{snapshot=journalSnapshot(journalDate,role);state.preparedJournals??={};state.preparedJournals[key]=snapshot;await write();}
+ else{state.preparedJournals??={};snapshot=state.preparedJournals[key]||journalSnapshot(journalDate,role);state.preparedJournals[key]=snapshot;await write();}
  const file=`control-tanques-DEMO-${role}-${journalDate}-lote-${key.split('|')[2]||1}.xlsx`;
  const blob=SheetXLSX.generate(journalTabs(snapshot));const xfile=typeof File==='function'?new File([blob],file,{type:blob.type}):null;
  try{if(xfile&&navigator.canShare?.({files:[xfile]})&&navigator.share){await navigator.share({files:[xfile],title:'Jornada de prueba · Control de Tanques'});toast('Compartir completado; confirma después si realmente se envió');}
@@ -344,11 +344,11 @@ async function sendJournal(resend){
 async function markJournalSent(){
  const role=journalRole(),key=currentBatchKey(journalDate,role),draft=state.preparedJournals?.[key];
  if(!draft)return toast('Genera primero el Excel');
- if(!confirm('¿Has enviado o guardado el archivo correctamente? Marcar como enviada bloqueará las correcciones de esta jornada. El sistema NO puede comprobar la recepción en Gerencia.'))return;
+ if(!confirm('¿Has enviado o guardado el archivo correctamente? Este lote quedará registrado como enviado. Los siguientes movimientos podrán enviarse en otros lotes. El sistema NO puede comprobar la recepción en Gerencia.'))return;
  state.sentJournals??={};state.sentJournals[key]=structuredClone(draft);
  for(const v of state.visits)if(role==='reparto'&&draft.visits.some(row=>row[0]===v.id))v.sentAt=now();
  for(const l of state.loads)if(role==='almacen'&&draft.loads.some(row=>row[0]===l.id))l.sentAt=now();
- delete state.preparedJournals[key];await persist();toast('Jornada marcada como enviada; disponible para reenviar');
+ delete state.preparedJournals[key];await persist();toast('Lote enviado. Puedes generar otros lotes hoy sin duplicar movimientos');
 }
 
 

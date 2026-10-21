@@ -1,1 +1,5 @@
-Control de Tanques v0.9.21 — muestra las visitas y el motivo exacto cuando no es seguro eliminarlas. Mantiene la eliminación con confirmación si cumple los requisitos. No borra datos ni modifica existencias al actualizar. Guardar copia JSON antes de instalar.
+Control de Tanques v0.9.22 · DEMO
+
+Mejoras: exportación manual de varios lotes en el mismo día, reutilización de un borrador pendiente y corrección de invalidación de borradores.
+
+IMPORTANTE: la anulación de visitas ya enviadas a Gerencia NO está implementada en esta versión. No borrar datos locales ni modificar saldos para simularla.
