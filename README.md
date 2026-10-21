@@ -1,1 +1,1 @@
-Control de Tanques v0.9.20 · DEMO. Corrección específica del selector superior: el menú de perfiles ya no queda recortado por overflow:hidden de la cabecera. Conserva los perfiles locales y las funciones de v0.9.19. Hacer copia JSON antes de actualizar.
+Control de Tanques v0.9.21 — muestra las visitas y el motivo exacto cuando no es seguro eliminarlas. Mantiene la eliminación con confirmación si cumple los requisitos. No borra datos ni modifica existencias al actualizar. Guardar copia JSON antes de instalar.

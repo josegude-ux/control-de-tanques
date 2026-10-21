@@ -1,7 +1,7 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.20';
+const APP_VERSION='0.9.21';
 const UPDATE_CHECK_MS=6*60*60*1000;
 let updateAvailable=false, updating=false, lastUpdateCheck=0;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
@@ -149,13 +149,23 @@ function canReopen(v){
  const laterLoad=state.loads.some(x=>x.vehicle===v.vehicle&&x.at>v.ended);
  return !laterVisit&&!laterLoad;
 }
-function canDeleteTestVisit(v){
- if(state.role!=='reparto'||!v||!v.ended||v.sentAt||state.openVisit)return false;
- if((state.visits||[]).some(x=>x.id!==v.id&&x.vehicle===v.vehicle&&x.started>v.ended))return false;
- if((state.loads||[]).some(x=>x.vehicle===v.vehicle&&x.at>v.ended))return false;
- if((state.stockTransfers?.[v.vehicle]?.receivedAt||'')>v.ended)return false;
- return (v.discharges||[]).every(d=>Number.isInteger(Number(d.source))&&Number(d.source)>=0&&Number(d.source)<state.tanks[v.vehicle].length&&Number(d.liters)>0);
+function testVisitBlockReason(v){
+ if(state.role!=='reparto')return 'Solo disponible en Reparto';
+ if(!v||!v.ended)return 'La visita no está cerrada';
+ if(v.sentAt)return 'La visita ya fue enviada';
+ if(state.openVisit)return 'Hay una visita abierta';
+ if((state.visits||[]).some(x=>x.id!==v.id&&x.vehicle===v.vehicle&&x.started>v.ended))return 'Hay visitas posteriores en este vehículo';
+ if((state.loads||[]).some(x=>x.vehicle===v.vehicle&&x.at>v.ended))return 'Hay cargas posteriores en este vehículo';
+ if((state.stockTransfers?.[v.vehicle]?.receivedAt||'')>v.ended)return 'Hay un inventario posterior recibido';
+ if(!Array.isArray(v.discharges)||!v.discharges.length)return 'No hay descargas detalladas que restaurar';
+ if(!state.tanks?.[v.vehicle])return 'No se encuentran los tanques del vehículo';
+ if(!v.discharges.every(d=>Number.isInteger(Number(d.source))&&Number(d.source)>=0&&Number(d.source)<state.tanks[v.vehicle].length&&Number(d.liters)>0))return 'Los datos antiguos de descarga requieren revisión';
+ const amounts=state.tanks[v.vehicle].slice();
+ for(const d of v.discharges)amounts[Number(d.source)]+=Number(d.liters);
+ if(amounts.some(x=>!Number.isFinite(x)||x>1000.001||x<0))return 'Restaurar litros superaría la capacidad de un tanque';
+ return '';
 }
+function canDeleteTestVisit(v){return !testVisitBlockReason(v)}
 async function deleteTestVisit(id){
  const v=(state.visits||[]).find(x=>x.id===id);
  if(!canDeleteTestVisit(v))return toast('No se puede eliminar: hay operaciones posteriores, envío o visita abierta');
@@ -168,7 +178,15 @@ async function deleteTestVisit(id){
  state.log.push({title:'Visita de prueba eliminada',desc:`${v.client} · ${v.vehicle} · ${fmt(v.discharges.reduce((s,d)=>s+Number(d.liters),0))} L restituidos · Referencia ${v.id}`,at:now()});
  await persist();toast('Visita ficticia eliminada; existencias restauradas');
 }
-function historyPage(){const movements=[...state.log].reverse();return `<h2 class="heading">Historial local</h2><div class="notice">Se muestran también las correcciones, los reinicios del contador y la reapertura de visitas. Las jornadas se pueden exportar desde Más → Enviar jornada.</div>${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}${state.role==='reparto'?(state.visits||[]).filter(canDeleteTestVisit).map(v=>card(`<h3>Eliminar visita ficticia</h3><p>${esc(v.client)} · ${fmt(v.discharges.reduce((s,d)=>s+Number(d.liters),0))} L</p><button class="btn danger" type="button" data-act="delete-test-visit" data-id="${esc(v.id)}">Eliminar esta visita de prueba</button>`)).join(''):''}`}
+function historyPage(){
+ const movements=[...state.log].reverse();
+ const visitCards=state.role==='reparto'?(state.visits||[]).map(v=>{
+  const reason=testVisitBlockReason(v);
+  const liters=(v.discharges||[]).reduce((sum,d)=>sum+Number(d.liters||0),0);
+  return card(`<h3>${esc(v.client||'Visita sin cliente')}</h3><p class="compact">${esc(v.vehicle||'Vehículo desconocido')} · ${fmt(liters)} L · ${v.ended?showTime(v.ended):'Sin cierre'}</p>${reason?`<div class="notice">No se puede eliminar automáticamente: ${esc(reason)}. No se han cambiado los datos.</div>`:`<button class="btn danger" type="button" data-act="delete-test-visit" data-id="${esc(v.id)}">Eliminar esta visita de prueba</button>`}`);
+ }).join(''):'';
+ return `<h2 class="heading">Historial local</h2><div class="notice">Se muestran también las correcciones, los reinicios del contador y la reapertura de visitas. Las jornadas se pueden exportar desde Más → Enviar jornada.</div>${state.role==='reparto'?`<h3 class="heading">Visitas registradas · Revisión de pruebas</h3>${visitCards||'<div class="empty">No hay visitas cerradas guardadas en este perfil.</div>'}`:''}${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}`;
+}
 const updatePanel=()=>card(`<h3>Actualizaciones</h3><div class="row"><span>Versión instalada</span><b class="mono">${APP_VERSION}</b></div><p class="update-info">La app busca nuevas versiones al abrirse o regresar a primer plano si hay conexión. No se eliminan los datos locales.</p>${action('Buscar actualizaciones','check-update',true)}${updateAvailable?`<div class="update-ready"><h4>Nueva versión disponible</h4><p class="compact">Puedes instalar la nueva versión sin borrar los movimientos de prueba.</p>${action('Actualizar ahora','apply-update')}</div>`:''}<p class="update-info" id="updateStatus">${navigator.onLine?'Para buscar una nueva versión, toca el botón.':'Sin conexión: se mantiene la versión instalada.'}</p>`);
 function stockAdjustmentPanel(){
  if(state.role!=='almacen')return '';
