@@ -1,1 +1,1 @@
-Control de Tanques v0.9.18 · DEMO. Reparto: pendientes por fecha y vehículo, iniciar descarga planificada, retirarla de pendientes al finalizar, registrar urgencias y adelantos. No altera existencias al importar planes. No usar para operaciones reales sin pruebas. El catálogo completo de Reparto sigue pendiente.
+Control de Tanques v0.9.19 · DEMO. Selector de perfiles táctil y eliminación segura de la última visita ficticia no enviada con restauración de litros. No usar para operaciones reales sin validación. Guardar copia JSON antes de probar.
