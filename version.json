@@ -1,1 +1,1 @@
-{"version": "0.9.23", "release": "2026-10-21", "notes": "Anulación trazable de visitas enviadas, exportación por lotes e importación idempotente en Gerencia"}
+{"version":"0.9.24","release":"2026-10-21","notes":"Salida segura de carga y descarga; exportación de lotes con visita abierta; historial diario para Almacén y Reparto"}
