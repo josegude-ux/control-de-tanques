@@ -1,5 +1,1 @@
-{
-  "version": "0.9.17",
-  "release": "2026-10-20",
-  "notes": "Descargas conectadas a planificación, pendientes y entregas no planificadas"
-}
+{"version":"0.9.18","release":"2026-10-21","notes":"Traspaso de existencias por tanque sin duplicar cargas"}
