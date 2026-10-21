@@ -1,5 +1,1 @@
-Control de Tanques v0.9.22 · DEMO
-
-Mejoras: exportación manual de varios lotes en el mismo día, reutilización de un borrador pendiente y corrección de invalidación de borradores.
-
-IMPORTANTE: la anulación de visitas ya enviadas a Gerencia NO está implementada en esta versión. No borrar datos locales ni modificar saldos para simularla.
+Control de Tanques v0.9.23 · DEMO local. Anulación de visitas enviadas sin borrado del original, Excel de anulación en lote manual, importación en Gerencia con control de duplicados. Los saldos de Inicio no se modifican automáticamente; requieren conciliación. No utilizar para operaciones reales.

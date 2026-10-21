@@ -70,7 +70,17 @@ const CDTImport=(()=>{
   }
   if(valid.length+issues.length!==m.length-1)throw Error('Error interno de validación');
   let provisional=[];try{provisional=JSON.parse(control['Aperturas provisionales']||'[]');if(!Array.isArray(provisional))provisional=[];provisional=provisional.filter(p=>p&&['camion','furgoneta'].includes(p.vehicle)&&Array.isArray(p.amounts)&&p.amounts.length===(p.vehicle==='camion'?3:1)&&p.amounts.every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1000)).slice(0,30)}catch(e){provisional=[];}
-  return {provisional,meta:{id,date,role,worker:meta['Operario (demo)']||'',createdAt:meta['Exportación UTC']||''},movements:valid,issues,summary:{rows:m.length-1,visits:v.length-1,corrections:c.length-1,resets:r.length-1}};
+  const cancellations=[];const cancelIds=new Set();
+  for(const row of c.slice(1)){
+   if(row[3]!=='ANULACION_CDT')continue;
+   const [cid,visitId,dischargeId,,previous,next,at]=row;
+   let original,info;try{original=JSON.parse(previous);info=JSON.parse(next)}catch(e){issues.push({id:cid,reason:'Anulación con JSON inválido'});continue}
+   if(role!=='reparto'||!cid||cid.length>100||cancelIds.has(cid)||!visitId||!dischargeId||!['camion','furgoneta'].includes(original.vehicle)||!original.client||!Number.isFinite(Number(original.liters))||Number(original.liters)<=0||Number(original.liters)>1000||!info.reason||!Date.parse(at)){
+    issues.push({id:cid||'(sin ID)',reason:'Anulación inválida'});continue;
+   }
+   cancelIds.add(cid);cancellations.push({id:cid,visitId,dischargeId,vehicle:original.vehicle,client:original.client,liters:Number(original.liters),reason:String(info.reason).slice(0,200),at});
+  }
+  return {cancellations,provisional,meta:{id,date,role,worker:meta['Operario (demo)']||'',createdAt:meta['Exportación UTC']||''},movements:valid,issues,summary:{rows:m.length-1,visits:v.length-1,corrections:c.length-1,resets:r.length-1}};
  }
  return {parse};
 })();
