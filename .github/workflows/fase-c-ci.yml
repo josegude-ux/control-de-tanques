@@ -1,0 +1,76 @@
+name: Control de Tanques - pruebas aisladas Fase C
+
+# Solo rama experimental y PR contra la rama de revisión.
+# No se publica la PWA, no se aplican migraciones remotas ni se usan secretos.
+on:
+  push:
+    branches:
+      - fix/fase-c-sync-resilience
+  pull_request:
+    branches:
+      - fix/fase-a-seguridad-inventario
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tanques-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Pruebas Node - lógica y cola offline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias de pruebas
+        run: npm install --no-audit --no-fund
+      - name: Ejecutar pruebas unitarias y de resiliencia
+        run: npm test
+
+  navegador:
+    name: Chromium - dispositivos simulados
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias y Chromium de Playwright
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Bloquear salida directa a Supabase real y de demostración
+        run: |
+          echo '127.0.0.1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
+          echo '::1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
+      - name: Seleccionar Chromium local de Playwright
+        run: echo "CHROMIUM_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
+      - name: Flujo completo offline, sin Supabase remoto
+        run: npm run test:browser
+      - name: Seguridad de roles e inventario en navegador
+        run: npm run test:browser:fase-a
+
+  postgresql:
+    name: PostgreSQL local - RLS, stock y concurrencia
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar e iniciar PostgreSQL exclusivamente local
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-contrib
+          sudo systemctl start postgresql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'SELECT 1;'
+      - name: Migraciones y escenarios sobre base desechable
+        env:
+          PGHOST: /var/run/postgresql
+          FASE_A_TEST_DB: tanques_fase_a_iso
+        run: npm run test:sql
