@@ -16,7 +16,8 @@
     dischargeCount: 0,
     loadCount: 0,
     completedLoad: false,
-    completedVisit: false
+    completedVisit: false,
+    completedDischarge: false
   };
   const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -83,6 +84,7 @@
     if (state.openVisit) {
       const count = state.openVisit.discharges?.length || 0;
       if (wizard.dischargeCount !== count) {
+        if (count > wizard.dischargeCount && wizard.openVisitId) wizard.completedDischarge = true;
         wizard.dischargeCount = count;
         wizard.dischargeStep = 0;
         wizard.dischargeDraft = {};
@@ -151,6 +153,10 @@
     restoreFormValues('loadForm', wizard.loadDraft);
     const step = wizard.loadStep;
     screen.classList.add('assistant-a', 'assistant-form-screen');
+    if (wizard.completedLoad) {
+      screen.prepend(newPanel('<div class="assistant-success" role="status">Carga guardada en este dispositivo. La sincronización automática se indica arriba.</div><button type="button" class="assistant-textbutton" data-guide="home">Volver al inicio</button>', 'assistant-confirmation'));
+      wizard.completedLoad = false;
+    }
     screen.prepend(newPanel(heading('CARGA · ' + vehicleName(state.vehicle),
       ['Elige el destino', 'Indica los litros', 'Revisa y confirma'][step],
       ['Selecciona el vehículo y el tanque donde vas a cargar.',
@@ -186,6 +192,10 @@
     if (!screen) return;
     screen.classList.add('assistant-a','assistant-selection');
     const mode = wizard.visitMode;
+    if (wizard.completedVisit) {
+      screen.prepend(newPanel('<div class="assistant-success" role="status">Visita finalizada. Revisa el indicador de sincronización.</div>', 'assistant-confirmation'));
+      wizard.completedVisit = false;
+    }
     const extra = select('extraVisitForm')?.closest('.card');
     const planned = [...screen.querySelectorAll('[data-act="start-planned-visit"]')].map(node => node.closest('.card'));
     const dateBox = select('deliveryDate')?.closest('.card');
@@ -220,6 +230,10 @@
     const form = select('dischargeForm');
     if (!form) return;
     restoreFormValues('dischargeForm', wizard.dischargeDraft);
+    if (wizard.completedDischarge) {
+      screen.prepend(newPanel('<div class="assistant-success" role="status">Descarga registrada. Puedes añadir otra o finalizar la visita.</div>', 'assistant-confirmation'));
+      wizard.completedDischarge = false;
+    }
     const step = wizard.dischargeStep;
     screen.prepend(newPanel(heading('DESCARGA · ' + escapeHTML(state.openVisit?.client),
        ['Tanque de origen','Tanque del cliente','Lectura y confirmación'][step],
