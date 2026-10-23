@@ -184,6 +184,12 @@
  }
  /** Mira si un lote pendiente dejaría stock inválido (espejo de la validación servidor Fase A). */
  function stockOk(meta){const r=balances(meta);return !r.ready||!r.problems.length;}
+ /** Reintento exponencial acotado: protege Supabase ante fallos persistentes sin perder la cola. */
+ function retryDelay(consecutiveFailures){
+  const n=Math.max(0,Math.min(7,Math.floor(Number(consecutiveFailures)||0)));
+  if(n===0)return 2000;
+  return Math.min(120000,2000*Math.pow(2,n-1));
+ }
  /** Gate serial para save/sync: evita carreras sobre meta. */
  function createGate(){
   let chain=Promise.resolve();
@@ -207,6 +213,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
