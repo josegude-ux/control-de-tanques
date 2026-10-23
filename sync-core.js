@@ -112,14 +112,17 @@
    delete meta.conflicts[r.key];
   }
  }
- function batch(meta,limit=500){
+ function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
    const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
    if(!groups.has(group))groups.set(group,[]);groups.get(group).push(r);
   }
   const out=[];for(const group of groups.values()){
+   // No enviar parcialmente una visita si cualquiera de sus movimientos está en conflicto.
+   if(options.skipConflicts&&group.some(r=>Object.hasOwn(meta.conflicts||{},r.key)))continue;
    if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
-   if(out.length+group.length>limit)break;out.push(...group);
+   if(out.length+group.length>limit)continue;
+   out.push(...group);
   }return copy(out);
  }
  function resolve(meta,key,useLocal){
