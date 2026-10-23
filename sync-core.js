@@ -114,18 +114,23 @@
  }
  /** Cliente conservador: nunca enviar pendientes incompatibles con el perfil vigente.
   * La autorización definitiva se vuelve a comprobar siempre en Supabase. */
- function permittedPending(row,member,uid){
-  if(!row||!member?.active||!uid)return false;
+ /** Compatibilidad entre el filtro de permisos y las pruebas de roles.
+  * No sustituye la autorización final del servidor. */
+ function allowedPending(row,member,uid){
+  if(!row||!member?.active)return false;
   if(member.role==='gerencia')return true;
-  if(row.owner_id&&row.owner_id!==uid)return false;
+  if(uid&&row.owner_id&&row.owner_id!==uid)return false;
   const p=row.payload||{};
   if(member.role==='almacen')return row.kind==='movement'&&p.type==='CARGA';
   if(member.role==='reparto'){
-   if(row.vehicle!==member.vehicle||!member.vehicle)return false;
+   if(!member.vehicle||row.vehicle!==member.vehicle)return false;
    return row.kind==='visit'||row.kind==='provisional'
     ||(row.kind==='movement'&&p.type==='DESCARGA');
   }
   return false;
+ }
+ function permittedPending(row,member,uid){
+  return !!uid&&allowedPending(row,member,uid);
  }
  function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
@@ -135,7 +140,6 @@
   const out=[];for(const group of groups.values()){
    // No enviar parcialmente una visita si cualquiera de sus movimientos está en conflicto.
    if(options.skipConflicts&&group.some(r=>Object.hasOwn(meta.conflicts||{},r.key)))continue;
-   if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
    if(out.length+group.length>limit)continue;
@@ -253,6 +257,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,permittedPending,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,allowedPending,permittedPending,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
