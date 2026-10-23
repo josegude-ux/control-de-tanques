@@ -21,10 +21,11 @@ Una carga, descarga o corrección puede comenzar sin cobertura, pero no debe per
 
 - `sync-core.js`: `retryDelay` y `reconcileSnapshot`.
 - `cloud-sync.js`: prefijo de membresía y bloqueo multi-pestaña por entorno; captura sobre copia de `meta`, commit IndexedDB y solo entonces sustitución de estado; reconstrucción de filas RLS desde `pull` completo; retroceso de reintentos, conservación de pendientes y errores de inventario visibles.
-- `tests/fase-c-resilience.test.js`: ocho regresiones para reintentos, cambios de visibilidad RLS, respuesta perdida, conflicto optimista, aislamiento y commit durable.
+- `tests/fase-c-resilience.test.js`: ocho regresiones para reintentos, cambios de visibilidad RLS, respuesta perdida, conflicto optimista, aislamiento y orden del commit durable.
+- `tests/fase-c-idb.test.js`: integración simulada con fallo de transacción IndexedDB antes del commit y recuperación del mismo movimiento, sin perder ni duplicar la cola.
 - `npm run test:fase-c`: pruebas específicas. `npm test`: pruebas previas más Fase C.
 
-Las ocho regresiones de Fase C se han ejecutado contra las fuentes de la rama usando un intérprete JavaScript aislado y han pasado. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
+Las ocho regresiones de lógica de Fase C se han ejecutado contra las fuentes de la rama usando un intérprete JavaScript aislado y han pasado. También se comprobó con un arnés JavaScript un fallo transaccional de IndexedDB seguido de una captura recuperada. El test equivalente de Node se ha añadido a la rama. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
 
 ## Matriz obligatoria de validación C2 (sin tocar producción)
 
