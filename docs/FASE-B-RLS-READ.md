@@ -1,7 +1,7 @@
 # Fase B — Corrección RLS de lectura (sin ejecutar)
 
 **Staging:** `iuqmzpahyjganhppcsur`  
-**Estado:** migración preparada y probada en PostgreSQL local. **NO aplicada en Supabase todavía.**
+**Estado:** revisión OK (existencias compartidas preservadas). Pruebas locales verdes. **NO aplicada en Supabase:** faltan credenciales DEMO (anon key / DB password). Producción no tocada.
 
 ## Archivo
 
