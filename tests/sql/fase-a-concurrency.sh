@@ -17,7 +17,7 @@ select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
 select * from public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
   'key','adjustment:conc-base','kind','adjustment','vehicle',null,'base',0,'deleted',false,
   'payload', jsonb_build_object(
-    'id','conc-base','at','2026-10-21T20:00:00Z','reason','Base concurrencia',
+    'id','conc-base','at','2026-10-21T22:00:00Z','reason','Base concurrencia',
     'next', jsonb_build_object('cisterna',22980,'camion',jsonb_build_array(100,0,0),'furgoneta',jsonb_build_array(0))
   )
 )));
@@ -44,9 +44,9 @@ SQL
 
 echo "==> Lanzando dos sesiones en paralelo"
 set +e
-run_session A conc-a 60 '2026-10-21T20:01:00Z' "$TMP/a.out" &
+run_session A conc-a 60 '2026-10-21T22:01:00Z' "$TMP/a.out" &
 PA=$!
-run_session B conc-b 60 '2026-10-21T20:01:01Z' "$TMP/b.out" &
+run_session B conc-b 60 '2026-10-21T22:01:01Z' "$TMP/b.out" &
 PB=$!
 wait "$PA"; EA=$?
 wait "$PB"; EB=$?

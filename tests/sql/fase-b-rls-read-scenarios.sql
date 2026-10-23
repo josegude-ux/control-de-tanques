@@ -22,10 +22,23 @@ select * from public.tanques_sync_batch(jsonb_build_array(
     'payload', jsonb_build_object('id','c-demo','name','Cliente DEMO RLS')
   ),
   jsonb_build_object(
+    'key','plan:2026-10-19|camion','kind','plan','vehicle','camion','base',0,'deleted',false,
+    'payload', jsonb_build_object('week','2026-10-19','vehicle','camion','entries',jsonb_build_array(
+      jsonb_build_object('id','e1','vehicle','camion','customerName','Bar')
+    ),'sent','{}'::jsonb)
+  ),
+  jsonb_build_object(
+    'key','plan:2026-10-19|furgoneta','kind','plan','vehicle','furgoneta','base',0,'deleted',false,
+    'payload', jsonb_build_object('week','2026-10-19','vehicle','furgoneta','entries',jsonb_build_array(
+      jsonb_build_object('id','e2','vehicle','furgoneta','customerName','Bar2')
+    ),'sent','{}'::jsonb)
+  ),
+  -- Legado agregado (vehicle NULL): solo Gerencia debe poder leerlo
+  jsonb_build_object(
     'key','plan:2026-W42','kind','plan','vehicle',null,'base',0,'deleted',false,
     'payload', jsonb_build_object('week','2026-W42','entries',jsonb_build_array(
-      jsonb_build_object('id','e1','vehicle','camion','customerName','Bar'),
-      jsonb_build_object('id','e2','vehicle','furgoneta','customerName','Bar2')
+      jsonb_build_object('id','e-legacy-c','vehicle','camion','customerName','LegacyCam'),
+      jsonb_build_object('id','e-legacy-f','vehicle','furgoneta','customerName','LegacyFur')
     ))
   )
 ));
@@ -52,8 +65,14 @@ select public.test_assert(
   (select count(*) from public.tanques_records where key='movement:carga-1')=1,
   'reparto-camión SÍ lee CARGA ajena (saldo compartido)');
 select public.test_assert(
-  (select count(*) from public.tanques_records where key='plan:2026-W42')=1,
-  'reparto-camión SÍ lee plan');
+  (select count(*) from public.tanques_records where key='plan:2026-10-19|camion')=1,
+  'reparto-camión SÍ lee plan de su vehículo');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='plan:2026-10-19|furgoneta')=0,
+  'reparto-camión NO lee plan furgoneta (SELECT API)');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='plan:2026-W42')=0,
+  'reparto-camión NO lee plan legado agregado (SELECT API)');
 
 -- --- Reparto FURGONETA no lee visit:v1 (camión / otro owner) ---
 select set_config('app.uid','44444444-4444-4444-8444-444444444444', false);
@@ -82,7 +101,7 @@ select public.test_assert(
   (select count(*) from public.tanques_records where key='provisional:fur-p1')=0,
   'almacén NO lee provisional (SELECT API)');
 select public.test_assert(
-  (select count(*) from public.tanques_records where key='plan:2026-W42')=0,
+  (select count(*) from public.tanques_records where kind='plan')=0,
   'almacén NO lee plan (SELECT API)');
 select public.test_assert(
   (select count(*) from public.tanques_records where kind='opening' and not deleted)>=1,
@@ -92,9 +111,10 @@ select public.test_assert(
 select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
 select public.test_assert(
   (select count(*) from public.tanques_records where key in (
-    'visit:v1','customer:c-demo','plan:2026-W42','provisional:fur-p1','movement:carga-1'
-  ))=5,
-  'gerencia lee visit+customer+plan+provisional+carga');
+    'visit:v1','customer:c-demo','plan:2026-10-19|camion','plan:2026-10-19|furgoneta',
+    'plan:2026-W42','provisional:fur-p1','movement:carga-1'
+  ))=7,
+  'gerencia lee visit+customer+planes por vehículo+legado+provisional+carga');
 
 -- --- Sync no rota: Reparto puede empujar descarga tras leer saldos ---
 select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);

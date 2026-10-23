@@ -37,7 +37,15 @@
   }
   if(s.role==='gerencia'){
    for(const c of s.customers||[])add('customer',c.id,c);
-   for(const [week,p] of Object.entries(s.weeklyPlans||{}))add('plan',week,p);
+   // Planificación por vehículo (API): plan:SEMANA|camion|furgoneta. No emitir plan:SEMANA agregado.
+   for(const [week,p] of Object.entries(s.weeklyPlans||{})){
+    if(String(week).includes('|'))continue;
+    for(const vehicle of ['camion','furgoneta']){
+     const entries=(p.entries||[]).filter(e=>e.vehicle===vehicle);
+     const sent={};if(p.sent&&p.sent[vehicle])sent[vehicle]=p.sent[vehicle];
+     add('plan',week+'|'+vehicle,{week,vehicle,entries,sent},vehicle);
+    }
+   }
    if(s.manager?.opening)add('opening','global',s.manager.opening);
    // Ajustes de existencias: solo Gerencia (auditoría vía sync + tanques_audit).
    for(const a of s.stockAdjustmentHistory||[])add('adjustment',a.id,a);
@@ -123,8 +131,25 @@
   const visits=rows.filter(r=>r.kind==='visit'&&(s.role==='gerencia'||r.owner_id===user)).map(r=>copy(r.payload));
   s.visits=visits.filter(v=>v.ended);const open=visits.filter(v=>!v.ended&&!v.cancelledAt);
   s.openVisit=open.find(v=>v.id===s.openVisit?.id)||open[0]||null;
-  s.customers=get('customer');s.weeklyPlans=Object.fromEntries(rows.filter(r=>r.kind==='plan').map(r=>[r.key.slice(5),copy(r.payload)]));
-  s.receivedPlans={};for(const [week,p] of Object.entries(s.weeklyPlans))for(const vehicle of ['camion','furgoneta'])s.receivedPlans[week+'|'+vehicle]={...p,week,vehicle,entries:(p.entries||[]).filter(e=>e.vehicle===vehicle)};
+  s.customers=get('customer');
+  // Planes: filas por vehículo (plan:SEMANA|vehiculo) o legado plan:SEMANA (solo Gerencia vía RLS).
+  s.weeklyPlans={};s.receivedPlans={};
+  for(const r of rows.filter(x=>x.kind==='plan')){
+   const id=r.key.slice(5),p=copy(r.payload);
+   if(id.includes('|')){
+    const vehicle=r.vehicle||p.vehicle||id.slice(id.lastIndexOf('|')+1);
+    const week=p.week||id.slice(0,id.lastIndexOf('|'));
+    const entries=(p.entries||[]).filter(e=>!e.vehicle||e.vehicle===vehicle);
+    s.weeklyPlans[week]??={entries:[],sent:{}};
+    s.weeklyPlans[week].entries.push(...entries);
+    if(p.sent)Object.assign(s.weeklyPlans[week].sent,p.sent);
+    s.receivedPlans[week+'|'+vehicle]={...p,week,vehicle,entries};
+   }else{
+    s.weeklyPlans[id]=p.entries?p:{entries:[],sent:{},...p};
+    for(const vehicle of ['camion','furgoneta'])
+     s.receivedPlans[id+'|'+vehicle]={...p,week:id,vehicle,entries:(p.entries||[]).filter(e=>e.vehicle===vehicle)};
+   }
+  }
   s.stockAdjustmentHistory=get('adjustment').sort((a,b)=>a.at.localeCompare(b.at));s.stockAdjustment=s.stockAdjustmentHistory.at(-1)||null;
   let provis=get('provisional');
   if(s.role==='reparto'&&s.vehicle)provis=provis.filter(p=>p.vehicle===s.vehicle);

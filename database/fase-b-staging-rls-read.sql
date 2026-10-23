@@ -15,8 +15,9 @@
 --   Almacén   → opening, adjustment, movements CARGA/DESCARGA (saldos compartidos);
 --               NO visit, provisional, customer, plan
 --   Reparto   → opening, adjustment, movements CARGA/DESCARGA (saldos);
---               visit solo propias; provisional solo de su vehículo; plan (filtrado en cliente);
---               NO customer ni visit de otros
+--               visit solo propias; provisional/plan solo de su vehículo (API);
+--               NO customer ni visit/plan de otros
+--   Planes:   filas plan:SEMANA|vehiculo (columna vehicle). Ver fase-b-staging-plan-by-vehicle.sql
 --
 -- Escritura: sin cambios (sigue solo vía tanques_sync_batch DEFINER + can_write).
 -- Sync automática: pull() usa SELECT → RLS; RPC DEFINER escribe y valida stock
@@ -54,10 +55,11 @@ language sql stable security definer set search_path='' as $$
        )
        or (
          m.role='reparto' and (
-           k in ('opening','adjustment','plan')
+           k in ('opening','adjustment')
            or (k='movement' and coalesce(p->>'type','') in ('CARGA','DESCARGA'))
            or (k='visit' and owner=(select auth.uid()))
            or (k='provisional' and v is not distinct from m.vehicle)
+           or (k='plan' and v is not distinct from m.vehicle)
          )
        )
      )

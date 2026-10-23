@@ -58,8 +58,21 @@ test('Fase B: migración RLS read restringe por rol/vehículo',()=>{
  assert.match(sql,/m\.role='almacen'/);
  assert.match(sql,/m\.role='reparto'/);
  assert.match(sql,/k='visit' and owner=\(select auth\.uid\(\)\)/);
+ assert.match(sql,/k='plan' and v is not distinct from m\.vehicle/);
  assert.match(sql,/NO EJECUTAR hasta autorización/i);
  assert.match(sql,/revoke all on function public\.tanques_sync_batch/);
+});
+
+test('Fase B: migración plan por vehículo (API)',()=>{
+ const sql=fs.readFileSync(path.join(root,'database/fase-b-staging-plan-by-vehicle.sql'),'utf8');
+ assert.match(sql,/iuqmzpahyjganhppcsur/);
+ assert.match(sql,/oevetnszmfxeukcncwji/);
+ assert.match(sql,/k='plan' and v is not distinct from m\.vehicle/);
+ assert.match(sql,/NO EJECUTAR hasta autorización/i);
+ assert.doesNotMatch(sql,/k in \('opening','adjustment','plan'\)/);
+ const core=fs.readFileSync(path.join(root,'sync-core.js'),'utf8');
+ assert.match(core,/week\+'\|'\+vehicle/);
+ assert.match(core,/plan:SEMANA\|camion\|furgoneta|plan:SEMANA\|vehiculo/);
 });
 
 test('Fase B: guardrail lógico (espejo de assertStagingIsolation)',()=>{

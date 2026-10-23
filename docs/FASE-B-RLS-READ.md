@@ -1,7 +1,7 @@
 # Fase B — Corrección RLS de lectura (sin ejecutar)
 
 **Staging:** `iuqmzpahyjganhppcsur`  
-**Estado:** revisión OK (existencias compartidas preservadas). Pruebas locales verdes. **NO aplicada en Supabase:** faltan credenciales DEMO (anon key / DB password). Producción no tocada.
+**Estado:** aplicada en DEMO (`iuqmzpahyjganhppcsur`). Complemento plan-por-vehículo: ver `FASE-B-PLAN-BY-VEHICLE.md` (pendiente de aplicar).
 
 ## Archivo
 
@@ -15,7 +15,7 @@
 | movement CARGA/DESCARGA | sí | sí (saldos) | sí (saldos) |
 | visit | sí | no | solo propias |
 | provisional | sí | no | solo su vehículo |
-| plan | sí | no | sí |
+| plan | sí (todas las filas / legado) | no | solo su vehículo (`plan:SEMANA\|vehiculo`) |
 | customer | sí | no | no |
 
 ## Sync automática
