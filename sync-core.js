@@ -243,7 +243,7 @@
   if(stopped||!editingTab)return {action:'idle',ms:null,keepPending:true};
   if(busy)return {action:'defer',ms:null,keepPending:true};
   if(!active)return {action:'hold',ms:null,keepPending:true,reason:'deactivated'};
-  if(!online)return {action:'retry',ms:5000,keepPending:true,reason:'offline'};
+  if(!online)return {action:'idle',ms:null,keepPending:true,reason:'offline-wait-event'};
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
