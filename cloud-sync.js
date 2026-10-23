@@ -127,7 +127,7 @@ const TankCloud=(()=>{
     }
     await pull();
     // Un conflicto bloquea solo su grupo/visita, no los demás movimientos independientes.
-    const sent=C.batch(meta,500,{skipConflicts:true,allowRecord:r=>C.allowedPending(r,member)});
+    const sent=C.batch(meta,500,{skipConflicts:true,allowRecord:r=>C.permittedPending(r,member,account)});
     if(sent.length){
      const {data,error}=await client.rpc('tanques_sync_batch',{changes:sent});
      if(error){
