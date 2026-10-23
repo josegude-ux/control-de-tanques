@@ -12,7 +12,7 @@ const TankCloud=(()=>{
  const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
  const PROFILE_PREFIX=cfg.cloudProfilePrefix||'tanques-cloud';
  const IS_STAGING=cfg.env==='staging';
- const MEMBER_CACHE_PREFIX=IS_STAGING?'tanques-staging-member:':'tanques-member:';
+ const MEMBER_CACHE_PREFIX=IS_STAGING?'tanques-staging-member:'+(cfg.idbName||'cdt_staging_faseb_v1')+':':'tanques-member:';
  const EDIT_LOCK_NAME='tanques-edit-session:'+(cfg.idbName||'cdt_demo_v1');
  const IS_DEMO_ROUTE=typeof location!=='undefined'&&location.pathname.split('/').includes('demo');
  const STAGING_HOST='iuqmzpahyjganhppcsur.supabase.co';
