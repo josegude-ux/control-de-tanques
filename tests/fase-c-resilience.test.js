@@ -77,6 +77,22 @@ test('Fase C: un movimiento compartido NO expone cliente, destino ni identificad
  assert.equal(movement.payload.litres,25);
 });
 
+test('Fase C: cambio de vehículo retiene pendientes antiguos sin transmitirlos ni borrarlos',()=>{
+ const m=C.empty(),owner='repartidor-1';
+ const ownVisit={key:'visit:camion1',kind:'visit',vehicle:'camion',owner_id:owner,payload:{id:'camion1',client:'Ficticio'}};
+ const ownDischarge={key:'movement:car-d',kind:'movement',vehicle:'camion',owner_id:owner,payload:{id:'car-d',type:'DESCARGA',visitId:'camion1'}};
+ const oldVan={key:'visit:van1',kind:'visit',vehicle:'furgoneta',owner_id:owner,payload:{id:'van1'}};
+ for(const r of [ownVisit,ownDischarge,oldVan])m.pending[r.key]=r;
+ const member={active:true,role:'reparto',vehicle:'camion'};
+ const selected=C.batch(m,500,{skipConflicts:true,allowRecord:r=>C.permittedPending(r,member,owner)});
+ assert.deepEqual(selected.map(x=>x.key),['visit:camion1','movement:car-d']);
+ assert.equal(Object.keys(m.pending).length,3);
+ assert.ok(m.pending['visit:van1'],'no se descarta un pendiente de otro vehículo');
+ assert.equal(C.permittedPending({...ownVisit,owner_id:'otro'},member,owner),false);
+ assert.equal(C.permittedPending(ownVisit,{...member,active:false},owner),false);
+ assert.equal(C.batch(m,500,{allowRecord:r=>C.permittedPending(r,{active:true,role:'almacen'},owner)}).length,0);
+});
+
 test('Fase C: aislamiento entre aplicación DEMO y original para bloqueo, caché de usuario y perfiles',()=>{
  const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
  assert.match(cloud,/EDIT_LOCK_NAME='tanques-edit-session:'\+\(cfg\.idbName\|\|'cdt_demo_v1'\)/);
