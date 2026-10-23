@@ -125,7 +125,7 @@ test('Fase C: una visita nunca se divide cuando supera el espacio restante en lo
  m.pending['visit:v1']={key:'visit:v1',kind:'visit',payload:{id:'v1'}};
  m.pending['movement:d1']={key:'movement:d1',kind:'movement',payload:{id:'d1',visitId:'v1'}};
  m.pending['movement:d2']={key:'movement:d2',kind:'movement',payload:{id:'d2',visitId:'v1'}};
- const sent=C.batch(m,2,{skipConflicts:true});
+ const sent=C.batch(m,3,{skipConflicts:true});
  assert.deepEqual(sent.map(r=>r.key),['movement:primer']);
  assert.ok(!sent.some(r=>r.payload.visitId==='v1'));
 });
