@@ -1,9 +1,9 @@
 'use strict';
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 const STORE='cdt_demo_v1';
-const APP_VERSION='0.9.26';
+const APP_VERSION='0.9.28';
 const UPDATE_CHECK_MS=6*60*60*1000;
-let updateAvailable=false, updating=false, lastUpdateCheck=0;
+let updateAvailable=false, updating=false, lastUpdateCheck=0, remoteVersion=null;
 const baseline=()=>({role:'reparto',page:'inicio',vehicle:'camion',tanks:{camion:[800,650,1000],furgoneta:[900]},cisterna:18000,loads:[],visits:[],openVisit:null,log:[],created:new Date().toISOString()});
 let db,state;
 let editingId=null;
@@ -824,6 +824,7 @@ async function checkForUpdates(manual=false){
     const remote=await resp.json();
     if(!/^\d+\.\d+\.\d+$/.test(remote.version))throw new Error('Versión remota inválida');
     const compare=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){if(x[i]!==y[i])return x[i]-y[i]}return 0};
+    remoteVersion=remote.version;
     updateAvailable=compare(remote.version,APP_VERSION)>0;
     if(updateAvailable){setUpdateStatus(`Disponible: v${remote.version}`);toast(`Nueva versión ${remote.version} disponible`);}
     else {setUpdateStatus(`Tienes la versión más reciente (v${APP_VERSION}).`);if(manual)toast('Ya tienes la última versión')}
@@ -847,7 +848,7 @@ async function applyUpdate(){
     }
     // Invalidar la caché de recursos de la versión anterior antes de recargar.
     if('caches' in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')).map(k=>caches.delete(k)))}
-    const next=new URL(location.href); next.searchParams.set("app_version", "0.9.20"); location.replace(next.href);
+    const next=new URL(location.href); next.searchParams.set("app_version", remoteVersion || "0.9.28"); location.replace(next.href);
   }catch(err){console.error(err);updating=false;toast('No se completó la actualización. Vuelve a intentarlo.');}
 }
 async function setupUpdates(){
