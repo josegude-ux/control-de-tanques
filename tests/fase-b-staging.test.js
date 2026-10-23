@@ -50,6 +50,18 @@ test('Fase B: SW staging con caché propia',()=>{
  assert.doesNotMatch(demoSw,/control-tanques-demo-v0101-fase-a/);
 });
 
+test('Fase B: migración RLS read restringe por rol/vehículo',()=>{
+ const sql=fs.readFileSync(path.join(root,'database/fase-b-staging-rls-read.sql'),'utf8');
+ assert.match(sql,/iuqmzpahyjganhppcsur/);
+ assert.match(sql,/tanques_private\.can_read/);
+ assert.match(sql,/drop policy if exists records_read/);
+ assert.match(sql,/m\.role='almacen'/);
+ assert.match(sql,/m\.role='reparto'/);
+ assert.match(sql,/k='visit' and owner=\(select auth\.uid\(\)\)/);
+ assert.match(sql,/NO EJECUTAR hasta autorización/i);
+ assert.match(sql,/revoke all on function public\.tanques_sync_batch/);
+});
+
 test('Fase B: guardrail lógico (espejo de assertStagingIsolation)',()=>{
  const prod='oevetnszmfxeukcncwji.supabase.co';
  function blocked(url,key,env){
