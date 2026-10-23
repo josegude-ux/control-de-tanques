@@ -14,6 +14,17 @@ test('Fase C: el retroceso progresivo es acotado y no crece indefinidamente',()=
  assert.equal(C.retryDelay(NaN),2000);
 });
 
+test('Fase C: en modo avión no se realizan sondeos; reconexión dispara sincronización',()=>{
+ const result=C.retryAfterGate({busy:false,online:false,active:true,stopped:false,editingTab:true,pendingCount:4});
+ assert.equal(result.action,'idle');
+ assert.equal(result.ms,null);
+ assert.equal(result.keepPending,true);
+ assert.equal(result.reason,'offline-wait-event');
+ const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
+ assert.match(cloud,/window\.addEventListener\('online',\(\)=>schedule\(0\)\)/);
+ assert.match(cloud,/visibilitychange/);
+});
+
 test('Fase C: lectura RLS completa limpia la caché inaccesible, pero conserva pendientes',()=>{
  const m=C.empty();
  m.rows['customer:antiguo']={key:'customer:antiguo',kind:'customer',owner_id:'gerencia',revision:1,payload:{nombre:'OCULTO'}};
