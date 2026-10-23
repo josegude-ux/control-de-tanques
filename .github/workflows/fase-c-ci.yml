@@ -47,13 +47,16 @@ jobs:
       - name: Instalar dependencias y Chromium de Playwright
         run: |
           npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+            echo "CHROMIUM_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
+          fi
       - name: Bloquear salida directa a Supabase real y de demostración
         run: |
           echo '127.0.0.1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
           echo '::1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
-      - name: Seleccionar Chromium local de Playwright
-        run: echo "CHROMIUM_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
       - name: Flujo completo offline, sin Supabase remoto
         run: npm run test:browser
       - name: Seguridad de roles e inventario en navegador
