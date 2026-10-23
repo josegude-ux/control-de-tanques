@@ -52,6 +52,20 @@ test('Fase C: conflicto de revisión preserva cambios locales y no modifica su b
  assert.equal(pending.base,1);
 });
 
+test('Fase C: un movimiento compartido NO expone cliente, destino ni identificador del plan',()=>{
+ const v={id:'visita-privada',vehicle:'camion',client:'Establecimiento confidencial',planEntryId:'plan-privado',discharges:[
+  {id:'descarga-privada',source:0,dest:'3',liters:25,at:'2026-10-24T00:00:00Z'}
+ ]};
+ const all=C.extract({role:'reparto',visits:[v]});
+ const movement=all['movement:descarga-privada'];
+ assert.ok(movement);
+ for(const field of ['client','dest','planEntryId'])assert.equal(movement.payload[field],undefined);
+ assert.equal(movement.payload.visitId,'visita-privada');
+ assert.equal(all['visit:visita-privada'].payload.client,'Establecimiento confidencial');
+ assert.equal(all['visit:visita-privada'].payload.discharges[0].dest,'3');
+ assert.equal(movement.payload.litres,25);
+});
+
 test('Fase C: aislamiento entre aplicación DEMO y original para bloqueo, caché de usuario y perfiles',()=>{
  const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
  assert.match(cloud,/EDIT_LOCK_NAME='tanques-edit-session:'\+\(cfg\.idbName\|\|'cdt_demo_v1'\)/);
