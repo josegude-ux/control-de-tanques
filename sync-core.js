@@ -112,6 +112,16 @@
    delete meta.conflicts[r.key];
   }
  }
+ /** La cola se conserva tras una revocación de permisos; se envía solo lo autorizado actualmente. */
+ function allowedPending(record,member){
+  if(!member?.active||!record)return false;
+  if(member.role==='gerencia')return true;
+  const kind=record.kind, vehicle=record.vehicle, type=record.payload?.type;
+  if(member.role==='almacen')return kind==='movement'&&type==='CARGA';
+  if(member.role==='reparto')return vehicle===member.vehicle&&(
+   kind==='visit'||kind==='provisional'||(kind==='movement'&&type==='DESCARGA'));
+  return false;
+ }
  function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
    const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
@@ -120,6 +130,7 @@
   const out=[];for(const group of groups.values()){
    // No enviar parcialmente una visita si cualquiera de sus movimientos está en conflicto.
    if(options.skipConflicts&&group.some(r=>Object.hasOwn(meta.conflicts||{},r.key)))continue;
+   if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
    if(out.length+group.length>limit)continue;
    out.push(...group);
@@ -236,6 +247,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,allowedPending,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
