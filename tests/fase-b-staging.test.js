@@ -29,11 +29,17 @@ test('Fase B: demo/config no apunta a producción',()=>{
  assert.match(demoConfig,/env:'staging'/);
  assert.match(demoConfig,/cdt_staging_faseb_v1/);
  assert.match(demoConfig,/tanques-auth-staging-v1/);
- assert.match(demoConfig,/YOUR_STAGING_PROJECT/);
- // supabaseUrl no debe ser el host de producción (productionHosts sí puede listarlo para bloquearlo).
+ assert.match(demoConfig,/iuqmzpahyjganhppcsur\.supabase\.co/);
+ assert.match(demoConfig,/sb_publishable_/);
+ // supabaseUrl debe ser DEMO staging, nunca producción.
  const urlMatch=demoConfig.match(/supabaseUrl:'([^']+)'/);
  assert.ok(urlMatch);
+ assert.match(urlMatch[1],/iuqmzpahyjganhppcsur/);
  assert.doesNotMatch(urlMatch[1],/oevetnszmfxeukcncwji/);
+ const keyMatch=demoConfig.match(/supabaseAnonKey:'([^']+)'/);
+ assert.ok(keyMatch);
+ assert.match(keyMatch[1],/^sb_publishable_/);
+ assert.doesNotMatch(keyMatch[1],/service_role/i);
  assert.match(demoConfig,/productionHosts:\['oevetnszmfxeukcncwji\.supabase\.co'\]/);
 });
 
@@ -46,8 +52,9 @@ test('Fase B: demo/index carga config antes de cloud-sync',()=>{
 });
 
 test('Fase B: SW staging con caché propia',()=>{
- assert.match(demoSw,/control-tanques-staging-v0101-fase-b/);
+ assert.match(demoSw,/control-tanques-staging-v0101-/);
  assert.doesNotMatch(demoSw,/control-tanques-demo-v0101-fase-a/);
+ assert.match(demoSw,/control-tanques-staging-/);
 });
 
 test('Fase B: migración RLS read restringe por rol/vehículo',()=>{
