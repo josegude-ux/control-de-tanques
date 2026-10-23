@@ -191,5 +191,12 @@ end $$;
 
 revoke all on function public.tanques_sync_batch(jsonb) from public, anon;
 grant execute on function public.tanques_sync_batch(jsonb) to authenticated;
-revoke all on function tanques_private.round2(numeric) from public;
-revoke all on function tanques_private.stock_problems() from public;
+
+-- Mínimo privilegio: authenticated debe poder ejecutar helpers usados por
+-- validate_record (trigger, SECURITY INVOKER) y tanques_sync_batch (SECURITY INVOKER).
+-- Sin este GRANT, PostgREST/authenticated recibe "permission denied for function".
+-- No se usa SECURITY DEFINER en round2/stock_problems: heredan RLS del invocador.
+revoke all on function tanques_private.round2(numeric) from public, anon;
+revoke all on function tanques_private.stock_problems() from public, anon;
+grant execute on function tanques_private.round2(numeric) to authenticated;
+grant execute on function tanques_private.stock_problems() to authenticated;

@@ -1,70 +1,90 @@
 # Fase A — Entrega para revisión (sin publicar)
 
-**Rama local:** `fix/fase-a-seguridad-inventario`  
+**Rama:** `fix/fase-a-seguridad-inventario`  
 **Versión app:** 0.10.1  
-**Estado:** cambios listos en el entorno aislado. **Sin push, sin PR, sin SQL en Supabase real.**
+**Estado:** correcciones locales listas para revisión. **Sin push de este fix de permisos, sin PR, sin SQL en Supabase real, sin tocar `main`.**
 
-## Errores corregidos (cliente)
+## Hallazgo de permisos (corregido)
+
+`tanques_private.round2` y `tanques_private.stock_problems` se invocan desde:
+
+- `validate_record()` — trigger **SECURITY INVOKER**
+- `tanques_sync_batch()` — RPC **SECURITY INVOKER**
+
+Había `REVOKE … FROM public` **sin** `GRANT EXECUTE … TO authenticated`. En PostgreSQL/Supabase eso provoca `permission denied for function` para el rol `authenticated` en cargas/descargas/ajustes.
+
+**Corrección (mínimo privilegio):**
+
+```sql
+revoke all on function tanques_private.round2(numeric) from public, anon;
+revoke all on function tanques_private.stock_problems() from public, anon;
+grant execute on function tanques_private.round2(numeric) to authenticated;
+grant execute on function tanques_private.stock_problems() to authenticated;
+```
+
+No se añadió `SECURITY DEFINER` a estos helpers: siguen el RLS del invocador.
+
+## Errores corregidos (cliente + SQL)
 
 | Problema | Corrección |
 |----------|------------|
-| Borrado de visitas en modo conectado | Bloqueado en UI + `forbidSyncedDelete` en `capture` |
-| Ajuste de existencias por Almacén | Solo Gerencia (`extract` + panel + `canAdjustStock`) |
-| Anulación restauraba saldo (tombstone) | `cancelledAt` ya no marca descargas `deleted` |
-| Reintento perdido si `sync()` sale anticipado | `retryAfterGate` reprograma offline; busy deja el `finally` |
-| Carrera save ∥ sync | `createGate()` / `exclusive` |
-| Cuenta desactivada con cola | No descarta pendientes; mensaje + backup; no push |
-| Precisión decimal | `litres()` a 2 decimales en core y mutaciones |
-| Doble submit de formularios | `formBusy` |
+| Borrado de visitas sincronizadas | UI + `forbidSyncedDelete` |
+| Ajuste solo Gerencia | cliente + `can_write` SQL |
+| Anulación restauraba saldo | sin tombstone automático en descargas |
+| Sync: reintentos / carreras / desactivado | `retryAfterGate`, `createGate`, cola conservada |
+| Litros / doble submit | `litres()`, `formBusy` |
+| **EXECUTE faltante en helpers privados** | **GRANT a `authenticated` (este ciclo)** |
 
-## SQL preparado (NO ejecutado)
+## SQL preparado (NO ejecutado en Supabase real)
 
 Archivo: `database/fase-a-seguridad-inventario.sql`
 
-- `can_write`: Almacén solo `CARGA` (sin `adjustment`)
-- Soft-delete movement/visit solo Gerencia
-- Validación reforzada opening/adjustment + redondeo
-- `tanques_sync_batch`: `unique_violation` → CONFLICT; post-lote `STOCK:` si existencias inválidas
-- Auditoría existente (`tanques_audit`) sigue registrando inserts/updates
+Harness aislado local:
+
+- `tests/sql/isolated-auth-stub.sql`
+- `tests/sql/fase-a-scenarios.sql`
+- `tests/sql/run-isolated-fase-a.sh` → BD `tanques_fase_a_iso` (PostgreSQL local)
+
+## Pruebas — resultado
+
+### Aprobadas
+
+**Node** (`node --test tests/sync-core.test.js tests/fase-a.test.js`):
+
+- **24/24 pass**, 0 fail (incluye assert de GRANT EXECUTE en el SQL)
+
+**SQL aislado** (`tests/sql/run-isolated-fase-a.sh` → `ISOLATED_SQL_PASS`):
+
+| Escenario | Resultado |
+|-----------|-----------|
+| `authenticated` EXECUTE `round2` / `stock_problems` | OK |
+| `anon` sin EXECUTE | OK |
+| Carga (Almacén) | OK |
+| Descarga (Reparto, lote visita+movimiento) | OK |
+| Ajuste Almacén rechazado (RLS) | OK |
+| Ajuste Gerencia autorizado | OK |
+| Duplicado `base=0` → CONFLICT | OK |
+| Existencias insuficientes → STOCK | OK |
+| Auditoría / no persistencia de rechazos | OK |
+
+### Pendientes / no ejecutadas
+
+- `tests/browser.cjs` (Playwright/Chromium)
+- Aplicación del SQL en **Supabase real** (prohibido hasta autorización)
+- E2E contra proyecto staging remoto
+- Push / PR de este commit de permisos (requiere autorización)
 
 ## Efectos sobre datos existentes (si se aplica el SQL)
 
-- No borra filas ni auditoría.
-- Adjustments futuros de Almacén serán rechazados por RLS (los ya guardados permanecen).
-- Lotes que dejen tanque/cisterna inválidos fallarán enteros (transacción).
-- Requiere **despliegue coordinado** frontend 0.10.1 + este SQL.
+Sin cambios: no borra filas ni auditoría. Solo añade EXECUTE a helpers ya usados por el flujo autenticado. Sin este GRANT, el frontend 0.10.1 fallaría al sincronizar tras desplegar el resto del SQL Fase A.
 
-## Pruebas
+## Despliegue coordinado
 
-```bash
-node --test tests/sync-core.test.js tests/fase-a.test.js
-```
-
-Resultado esperado: 24 tests OK (9 sync-core + 15 fase-a).
-
-No se usaron registros reales de Supabase.  
-`tests/browser.cjs` (Playwright) no se ejecutó aquí (requiere Chromium); la lógica cubierta está en unit tests.
-
-## Pendiente (fuera de Fase A / requiere tu autorización)
-
-- Push de la rama / PR
-- Aplicar SQL en Supabase
-- Lectura RLS más restrictiva de movimientos
-- Restore desde JSON de backup
-- Pull incremental por `updated_at`
-- Flujo Gerencia de anulación con ajuste de saldo explícito
-- E2E Playwright contra mock/staging
-
-## Referencias de negocio (solo tests; no escritas en BD real)
-
-- Opening 20/10/2026: C 977 / 413,57 / 0 · F 990 · Cisterna 23.000
-- 450 L Cervecería Ejemplo: excluidos del opening de prueba
-- BARALLETE BAR 240,61 L: conservada en test de anulación sin tombstone
+1. Frontend 0.10.1  
+2. `database/fase-a-seguridad-inventario.sql` **completo** (incluye este GRANT)
 
 ## Autorización solicitada
 
-Para continuar hace falta tu OK explícito para, por separado:
-
-1. `git push -u origin fix/fase-a-seguridad-inventario`
-2. Crear pull request
-3. Aplicar `database/fase-a-seguridad-inventario.sql` en el proyecto Supabase
+1. Push de la rama (incluye este fix de permisos)  
+2. Crear PR (cuando proceda)  
+3. Aplicar SQL en Supabase real (cuando proceda)

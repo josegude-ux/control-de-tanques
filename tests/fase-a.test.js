@@ -174,7 +174,7 @@ test('gate serial evita solapamiento save/sync',async()=>{
  assert.deepEqual(order,['a-start','a-end','b-start','b-end']);
 });
 
-test('SQL Fase A preparado: ajuste solo gerencia y STOCK',()=>{
+test('SQL Fase A preparado: ajuste solo gerencia, STOCK y EXECUTE authenticated',()=>{
  const sql=fs.readFileSync(path.join(__dirname,'../database/fase-a-seguridad-inventario.sql'),'utf8');
  assert.match(sql,/m\.role='almacen' and k='movement' and p->>'type'='CARGA'/);
  assert.doesNotMatch(sql,/m\.role='almacen' and \(\(k='movement' and p->>'type'='CARGA'\) or k='adjustment'\)/);
@@ -182,6 +182,10 @@ test('SQL Fase A preparado: ajuste solo gerencia y STOCK',()=>{
  assert.match(sql,/unique_violation/);
  assert.match(sql,/Solo Gerencia puede anular/);
  assert.match(sql,/NO ejecutar aún/i);
+ assert.match(sql,/grant execute on function tanques_private\.round2\(numeric\) to authenticated/i);
+ assert.match(sql,/grant execute on function tanques_private\.stock_problems\(\) to authenticated/i);
+ assert.match(sql,/revoke all on function tanques_private\.round2\(numeric\) from public, anon/i);
+ assert.match(sql,/revoke all on function tanques_private\.stock_problems\(\) from public, anon/i);
 });
 
 test('referencia Cervecería Ejemplo 450 L no entra en opening de prueba',()=>{
