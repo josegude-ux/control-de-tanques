@@ -25,7 +25,7 @@ Una carga, descarga o corrección puede comenzar sin cobertura, pero no debe per
 - `tests/fase-c-idb.test.js`: integración simulada con fallo de transacción IndexedDB antes del commit y recuperación del mismo movimiento, sin perder ni duplicar la cola.
 - `npm run test:fase-c`: pruebas específicas. `npm test`: pruebas previas más Fase C.
 
-La batería de **18 escenarios** de Fase C se ha ejecutado contra las fuentes actualizadas mediante un intérprete JavaScript aislado y ha pasado. Además, un arnés transaccional independiente simuló fallo de IndexedDB y recuperación del mismo movimiento. El test de integración equivalente se ha añadido a la suite de Node. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
+Se han ejecutado **56 pruebas** contra las fuentes de la rama en un arnés JavaScript aislado: 29 de núcleo/Fase A, 8 de Fase B y 19 de Fase C. Todas han pasado, incluida la simulación transaccional de fallo de IndexedDB. Estas pruebas emulan parte de Node y del navegador; **no equivalen a ejecutar `npm test` de forma nativa** ni sustituyen ensayos en dos PWA reales. Ambas validaciones siguen pendientes.
 
 ## Matriz obligatoria de validación C2 (sin tocar producción)
 
@@ -51,6 +51,10 @@ La batería de **18 escenarios** de Fase C se ha ejecutado contra las fuentes ac
 - **Caída de IndexedDB/cuota en iPhone:** planificar exportación de emergencia y pruebas reales de restauración; ninguna garantía si se borran datos del sitio antes de sincronizar.
 - **Concurrencia de pestañas sin Web Locks API:** decidir un mecanismo alternativo o dejar una sola pestaña editable cuando no esté disponible.
 - **Controles externos:** revisar avisos de Supabase sobre `SECURITY DEFINER` y protección de contraseñas filtradas; no cambiar la RPC sin pruebas SQL.
+
+## Verificación adicional en Supabase DEMO
+
+El 24/10/2026 se ha ejecutado en el proyecto `iuqmzpahyjganhppcsur` una transacción de prueba con una carga de 100 L, un segundo intento duplicado y descargas independientes de camión y furgoneta. El segundo intento fue rechazado con `CONFLICT`; durante la transacción existieron tres movimientos válidos y ninguna anomalía de inventario. La transacción finalizó con `ROLLBACK`. Una consulta posterior confirmó **cuatro perfiles, cero movimientos persistidos, una única apertura y saldos ficticios intactos**. Esta prueba no equivale a ensayos desde dos dispositivos físicos ni a concurrencia entre conexiones simultáneas.
 
 ## Criterios para integración
 
