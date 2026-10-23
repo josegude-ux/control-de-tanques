@@ -122,6 +122,21 @@
    kind==='visit'||kind==='provisional'||(kind==='movement'&&type==='DESCARGA'));
   return false;
  }
+ /** Cliente conservador: nunca enviar pendientes incompatibles con el perfil vigente.
+  * La autorización definitiva se vuelve a comprobar siempre en Supabase. */
+ function permittedPending(row,member,uid){
+  if(!row||!member?.active||!uid)return false;
+  if(member.role==='gerencia')return true;
+  if(row.owner_id&&row.owner_id!==uid)return false;
+  const p=row.payload||{};
+  if(member.role==='almacen')return row.kind==='movement'&&p.type==='CARGA';
+  if(member.role==='reparto'){
+   if(row.vehicle!==member.vehicle||!member.vehicle)return false;
+   return row.kind==='visit'||row.kind==='provisional'
+    ||(row.kind==='movement'&&p.type==='DESCARGA');
+  }
+  return false;
+ }
  function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
    const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
@@ -130,6 +145,7 @@
   const out=[];for(const group of groups.values()){
    // No enviar parcialmente una visita si cualquiera de sus movimientos está en conflicto.
    if(options.skipConflicts&&group.some(r=>Object.hasOwn(meta.conflicts||{},r.key)))continue;
+   if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
    if(out.length+group.length>limit)continue;
@@ -247,6 +263,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,allowedPending,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,allowedPending,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,permittedPending,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
