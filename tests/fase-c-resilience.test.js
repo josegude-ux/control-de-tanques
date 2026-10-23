@@ -93,6 +93,22 @@ test('Fase C: cambio de vehículo retiene pendientes antiguos sin transmitirlos 
  assert.equal(C.batch(m,500,{allowRecord:r=>C.permittedPending(r,{active:true,role:'almacen'},owner)}).length,0);
 });
 
+test('Fase C: operaciones de perfil revocado no contaminan existencias ni vistas activas',()=>{
+ const m=C.empty();C.receive(m,[opening]);
+ const revoked={key:'movement:old-van-load',kind:'movement',vehicle:'furgoneta',owner_id:'operator1',
+  payload:{id:'old-van-load',type:'CARGA',vehicle:'furgoneta',tank:1,litres:100,loss:0,time:'2026-10-24T00:00:00Z'}};
+ m.pending[revoked.key]=revoked;
+ const member={active:true,role:'reparto',vehicle:'camion'};
+ const allowedPending=Object.fromEntries(Object.entries(m.pending).filter(([,r])=>C.permittedPending(r,member,'operator1')));
+ const visible={...m,pending:allowedPending};
+ assert.equal(C.balances(m).balances.furgoneta[0],900);
+ assert.equal(C.balances(visible).balances.furgoneta[0],800);
+ assert.ok(m.pending[revoked.key],'registro pendiente sigue guardado');
+ const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
+ assert.match(cloud,/applyBalances\(stagedState,visible\)/);
+ assert.match(cloud,/if\(member\?\.role==='reparto'\)stagedState\.vehicle=member\.vehicle;\s*C\.hydrate\(visible,stagedState,account\)/);
+});
+
 test('Fase C: aislamiento entre aplicación DEMO y original para bloqueo, caché de usuario y perfiles',()=>{
  const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
  assert.match(cloud,/EDIT_LOCK_NAME='tanques-edit-session:'\+\(cfg\.idbName\|\|'cdt_demo_v1'\)/);
