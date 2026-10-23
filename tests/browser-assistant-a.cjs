@@ -40,7 +40,7 @@ async function main() {
   server=http.createServer((req,res)=>{
     try {
       const pathname=decodeURIComponent(new URL(req.url,ORIGIN).pathname);
-      const safePath=pathname==='/'?'/demo/index.html':pathname;
+      const safePath=(pathname==='/'||pathname==='/demo/')?'/demo/index.html':pathname;
       const file=path.resolve(ROOT,'.'+safePath);
       if(!file.startsWith(ROOT+path.sep))throw Error('Invalid path');
       const mime=file.endsWith('.html')?'text/html':file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':file.endsWith('.webmanifest')?'application/manifest+json':'application/octet-stream';
