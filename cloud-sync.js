@@ -12,14 +12,17 @@ const TankCloud=(()=>{
  const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
  const PROFILE_PREFIX=cfg.cloudProfilePrefix||'tanques-cloud';
  const IS_STAGING=cfg.env==='staging';
- /** Impide que un build DEMO escriba en el proyecto Supabase de producción. */
+ const IS_DEMO_ROUTE=typeof location!=='undefined'&&/(?:^|\\/)demo(?:\\/|$)/.test(location.pathname);
+ const STAGING_HOST='iuqmzpahyjganhppcsur.supabase.co';
+ /** Fail-closed: /demo/ nunca puede heredar la conexión de producción. */
  function assertStagingIsolation(){
+  if(IS_DEMO_ROUTE&&!IS_STAGING)throw Error('DEMO bloqueada: falta la configuración staging.');
   if(!IS_STAGING)return;
   let host='';
   try{host=new URL(URL).hostname;}catch{throw Error('STAGING: supabaseUrl inválida');}
   const blocked=[PROD_HOST,...(cfg.productionHosts||[])];
-  if(blocked.includes(host)||/YOUR_STAGING/i.test(URL)||/YOUR_STAGING/i.test(KEY)){
-   throw Error('STAGING bloqueado: configura un proyecto Supabase independiente (no producción).');
+  if(host!==STAGING_HOST||blocked.includes(host)||KEY===PROD_KEY||/YOUR_STAGING/i.test(URL)||/YOUR_STAGING/i.test(KEY)){
+   throw Error('STAGING bloqueado: solo está autorizado el Supabase DEMO independiente.');
   }
  }
  let client,user=null,member=null,meta=C.empty(),busy=false,timer=null,message='Conecta tu cuenta para sincronizar',members=[],editingTab=true;
