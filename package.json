@@ -4,12 +4,12 @@
   "version": "0.10.1",
   "description": "PWA Control de Tanques — tests locales (sin desplegar)",
   "scripts": {
-    "test": "node --test tests/sync-core.test.js tests/fase-a.test.js tests/fase-b-staging.test.js tests/fase-c-resilience.test.js",
+    "test": "node --test tests/sync-core.test.js tests/fase-a.test.js tests/fase-b-staging.test.js tests/fase-c-resilience.test.js tests/fase-c-idb.test.js",
     "test:browser": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser.cjs",
     "test:browser:fase-a": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser-fase-a.cjs",
     "test:sql": "bash tests/sql/run-isolated-fase-a.sh",
     "test:fase-b": "node --test tests/fase-b-staging.test.js",
-    "test:fase-c": "node --test tests/fase-c-resilience.test.js"
+    "test:fase-c": "node --test tests/fase-c-resilience.test.js tests/fase-c-idb.test.js"
   },
   "devDependencies": {
     "playwright": "1.48.0"
