@@ -144,8 +144,8 @@ const TankCloud=(()=>{
     }
     await pull();
     meta.lastSync=new Date().toISOString();
-    const heldByRole=Object.values(meta.pending).some(r=>!C.allowedPending(r,member));
-    const hasAllowed=Object.values(meta.pending).some(r=>C.allowedPending(r,member));
+    const heldByRole=Object.values(meta.pending).some(r=>!C.permittedPending(r,member,account));
+    const hasAllowed=Object.values(meta.pending).some(r=>C.permittedPending(r,member,account));
     if(Object.keys(meta.conflicts).length){
      consecutiveFailures=0;
      message=`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
@@ -174,7 +174,7 @@ const TankCloud=(()=>{
     try{await persistRemote();}catch(err){consecutiveFailures++;message=err.message||message;}
     // Reducción de carga y batería: de 2 s hasta 120 s tras fallos repetidos.
     // Nunca borrar ni confirmar pendientes después de una respuesta fallida.
-    const sendable=Object.values(meta.pending).some(r=>C.allowedPending(r,member));
+    const sendable=Object.values(meta.pending).some(r=>C.permittedPending(r,member,account));
     schedule(sendable&&!Object.keys(meta.conflicts).length
      ?C.retryDelay(consecutiveFailures):15000);
    }
