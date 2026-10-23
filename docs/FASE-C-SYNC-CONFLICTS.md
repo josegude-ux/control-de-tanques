@@ -25,7 +25,7 @@ Una carga, descarga o corrección puede comenzar sin cobertura, pero no debe per
 - `tests/fase-c-idb.test.js`: integración simulada con fallo de transacción IndexedDB antes del commit y recuperación del mismo movimiento, sin perder ni duplicar la cola.
 - `npm run test:fase-c`: pruebas específicas. `npm test`: pruebas previas más Fase C.
 
-Las ocho regresiones de lógica de Fase C se han ejecutado contra las fuentes de la rama usando un intérprete JavaScript aislado y han pasado. También se comprobó con un arnés JavaScript un fallo transaccional de IndexedDB seguido de una captura recuperada. El test equivalente de Node se ha añadido a la rama. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
+La batería ampliada de **12 escenarios** de Fase C se ha ejecutado contra las fuentes de la rama en un intérprete JavaScript aislado y ha pasado (incluye simulación de fallo transaccional en IndexedDB). También se comprobó con un arnés JavaScript un fallo transaccional de IndexedDB seguido de una captura recuperada. El test equivalente de Node se ha añadido a la rama. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
 
 ## Matriz obligatoria de validación C2 (sin tocar producción)
 
@@ -47,7 +47,7 @@ Las ocho regresiones de lógica de Fase C se han ejecutado contra las fuentes de
 ## Riesgos abiertos C3 (bloquean salida a producción)
 
 - **Cambio de rol con pendientes antiguos:** la cola pertenece a la cuenta, no se separa todavía por permiso de operación. Debe definirse retención segura, cuarentena de pendientes no autorizados, cambio inmediato a perfil permitido y recuperación supervisada.
-- **Datos de establecimientos en eventos compartidos:** los movimientos de descarga pueden contener `client`/`dest` en el `payload`, aunque RLS permita esos movimientos a toda la flota para calcular saldos. Diseñar un resumen de existencias sin información sensible o endpoints filtrados antes de producción; no confiar solo en filtros de interfaz.
+- **Privacidad de movimientos históricos:** las nuevas descargas ya no incluyen `client`, `dest` ni `planEntryId` en el movimiento de inventario compartido; esta corrección está validada con una prueba de regresión. **Pendiente:** verificar el tratamiento/migración de movimientos antiguos, y si el identificador opaco `visitId` debe ocultarse del resto de la flota mediante vistas o RPC filtradas. No confiar únicamente en filtros de interfaz.
 - **Caída de IndexedDB/cuota en iPhone:** planificar exportación de emergencia y pruebas reales de restauración; ninguna garantía si se borran datos del sitio antes de sincronizar.
 - **Concurrencia de pestañas sin Web Locks API:** decidir un mecanismo alternativo o dejar una sola pestaña editable cuando no esté disponible.
 - **Controles externos:** revisar avisos de Supabase sobre `SECURITY DEFINER` y protección de contraseñas filtradas; no cambiar la RPC sin pruebas SQL.
