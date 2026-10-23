@@ -67,12 +67,32 @@ Harness aislado local:
 | Existencias insuficientes → STOCK | OK |
 | Auditoría / no persistencia de rechazos | OK |
 
+### Browser Playwright (ficticio + mock Supabase)
+
+Comandos:
+
+```bash
+npm install
+CHROMIUM_PATH=/usr/local/bin/google-chrome npm run test:browser
+CHROMIUM_PATH=/usr/local/bin/google-chrome npm run test:browser:fase-a
+```
+
+| Cobertura pedida | Resultado |
+|------------------|-----------|
+| 1. Login y permisos Gerencia/Almacén/Reparto | OK (`browser-fase-a`) |
+| 2. Sync automática dos dispositivos | OK |
+| 3. Cargas/descargas sin conexión | OK |
+| 4. Recuperación al volver Internet | OK |
+| 5. Prevención de duplicados | OK |
+| 6. Datos tras actualizar/recargar PWA | OK |
+| 7. Coherencia existencias por tanque | OK (+ rechazo STOCK) |
+| Smoke previo `tests/browser.cjs` | OK |
+
 ### Pendientes / no ejecutadas
 
-- `tests/browser.cjs` (Playwright/Chromium)
 - Aplicación del SQL en **Supabase real** (prohibido hasta autorización)
-- E2E contra proyecto staging remoto
-- Push / PR de este commit de permisos (requiere autorización)
+- E2E contra proyecto staging remoto (no mock)
+- Push / PR de commits posteriores a `2d3d2c8` (requiere autorización)
 
 ## Efectos sobre datos existentes (si se aplica el SQL)
 

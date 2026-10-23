@@ -10,7 +10,9 @@ Repositorio de esta aplicación: `josegude-ux/control-de-tanques`.
 - Anulación no restaura saldo automáticamente; historial conservado.
 - Cola IndexedDB: reintentos si `sync` sale anticipado; mutex save/sync; cuenta desactivada no descarta pendientes.
 - Migración SQL de revisión: `database/fase-a-seguridad-inventario.sql` (**no aplicada** a Supabase real hasta autorización).
-- Tests: `node --test tests/sync-core.test.js tests/fase-a.test.js`.
+- Tests: `node --test tests/sync-core.test.js tests/fase-a.test.js`
+- Browser (Playwright + Chrome local): `npm install && npm run test:browser && npm run test:browser:fase-a`
+- SQL aislado: `npm run test:sql` (PostgreSQL local; no Supabase real).
 
 ## Uso
 
