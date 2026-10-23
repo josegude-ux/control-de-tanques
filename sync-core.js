@@ -26,7 +26,10 @@
     for(const d of v.discharges||[]){
      // Origen pendiente (p.ej. BARALLETE 240,61 L): no emitir movement de stock ni asignar tanque.
      if(!validSource(d))continue;
-     add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,client:v.client,dest:d.dest,visitId:v.id,planEntryId:v.planEntryId||null,cancelled:!!v.cancelledAt},v.vehicle,false);
+     // La tabla movement es visible a toda la flota para calcular saldos.
+     // Datos identificativos del cliente y tanque de destino permanecen SOLO en visit,
+     // que RLS limita a su repartidor y a Gerencia.
+     add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,visitId:v.id,cancelled:!!v.cancelledAt},v.vehicle,false);
     }
    }
    // Solo provisionales del vehículo asignado (evita reenviar los de otro móvil).
@@ -83,6 +86,23 @@
    meta.rows[r.key]=r;
   }
  }
+ /**
+  * La lectura RLS es una instantánea completa. Eliminar filas que han dejado
+  * de ser visibles (p.ej. baja, cambio de rol/vehículo), pero NUNCA eliminar
+  * operaciones locales pendientes: requieren conciliación o revisión.
+  */
+ function reconcileSnapshot(meta,rows){
+  const visible=new Set(rows.map(r=>r.key));
+  receive(meta,rows);
+  let removed=0;
+  for(const key of Object.keys(meta.rows)){
+   if(visible.has(key))continue;
+   delete meta.rows[key];
+   delete meta.conflicts[key];
+   removed++;
+  }
+  return removed;
+ }
  function acknowledge(meta,sent,rows){
   const byKey=Object.fromEntries(sent.map(r=>[r.key,r]));
   for(const r of rows){
@@ -92,14 +112,50 @@
    delete meta.conflicts[r.key];
   }
  }
- function batch(meta,limit=500){
+ /** Cliente conservador: nunca enviar pendientes incompatibles con el perfil vigente.
+  * La autorización definitiva se vuelve a comprobar siempre en Supabase. */
+ /** Compatibilidad entre el filtro de permisos y las pruebas de roles.
+  * No sustituye la autorización final del servidor. */
+ function allowedPending(row,member,uid){
+  if(!row||!member?.active)return false;
+  if(member.role==='gerencia')return true;
+  if(uid&&row.owner_id&&row.owner_id!==uid)return false;
+  const p=row.payload||{};
+  if(member.role==='almacen')return row.kind==='movement'&&p.type==='CARGA';
+  if(member.role==='reparto'){
+   if(!member.vehicle||row.vehicle!==member.vehicle)return false;
+   return row.kind==='visit'||row.kind==='provisional'
+    ||(row.kind==='movement'&&p.type==='DESCARGA');
+  }
+  return false;
+ }
+ function permittedPending(row,member,uid){
+  return !!uid&&allowedPending(row,member,uid);
+ }
+ /**
+  * Vista segura para una cuenta: aplica RLS a las filas remotas (ya filtradas
+  * por Supabase) y excluye del estado visible las operaciones locales que
+  * perdieron autorización. No borra NUNCA las operaciones de la cola real.
+  */
+ function visibleMeta(meta,member,uid){
+  const pending={};
+  for(const [key,row] of Object.entries(meta.pending||{})){
+   if(permittedPending(row,member,uid))pending[key]=row;
+  }
+  return {...meta,pending};
+ }
+ function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
    const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
    if(!groups.has(group))groups.set(group,[]);groups.get(group).push(r);
   }
   const out=[];for(const group of groups.values()){
+   // No enviar parcialmente una visita si cualquiera de sus movimientos está en conflicto.
+   if(options.skipConflicts&&group.some(r=>Object.hasOwn(meta.conflicts||{},r.key)))continue;
+   if(options.allowRecord&&group.some(r=>!options.allowRecord(r)))continue;
    if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
-   if(out.length+group.length>limit)break;out.push(...group);
+   if(out.length+group.length>limit)continue;
+   out.push(...group);
   }return copy(out);
  }
  function resolve(meta,key,useLocal){
@@ -112,17 +168,24 @@
    delete meta.conflicts[k];
   }
  }
- function effective(meta){return Object.values({...meta.rows,...meta.pending}).filter(r=>!r.deleted);}
+ /** Solo la vista descarta pendientes retenidos por cambios de permisos; la cola durable sigue intacta. */
+ function visiblePending(meta,member,user){
+  if(!member)return meta.pending;
+  return Object.fromEntries(Object.entries(meta.pending).filter(([,r])=>permittedPending(r,member,user)));
+ }
+ function effective(meta,member=null,user=null){
+  return Object.values({...meta.rows,...visiblePending(meta,member,user)}).filter(r=>!r.deleted);
+ }
  /** Filas para stock: los movements soft-deleted siguen contando hasta ajuste de Gerencia. */
- function stockRecords(meta){
-  const merged={...meta.rows,...meta.pending};
+ function stockRecords(meta,member=null,user=null){
+  const merged={...meta.rows,...visiblePending(meta,member,user)};
   return Object.values(merged).filter(r=>{
    if(r.kind==='movement')return true; // incluir deleted
    return !r.deleted;
   });
  }
- function hydrate(meta,s,user){
-  const rows=effective(meta),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
+ function hydrate(meta,s,user,member=null){
+  const rows=effective(meta,member,user),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
   // Cargas: Almacén ve todas; Reparto no las materializa en su perfil (solo saldos vía balances).
   const loads=get('movement').filter(m=>m.type==='CARGA'&&Number.isInteger(m.tank)&&m.tank>=1)
    .map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:litres(m.litres),merma:litres(m.loss),at:m.time,cisternPending:m.cisternPending}));
@@ -160,8 +223,8 @@
   s.manager.movements=Object.fromEntries(get('movement').map(m=>[m.id,m]));s.manager.cancellations={};
   return s;
  }
- function balances(meta){
-  const rows=stockRecords(meta),opening=rows.find(r=>r.kind==='opening')?.payload;
+ function balances(meta,member=null,user=null){
+  const rows=stockRecords(meta,member,user),opening=rows.find(r=>r.kind==='opening')?.payload;
   const changes=rows.filter(r=>r.kind==='adjustment').map(r=>r.payload).sort((a,b)=>a.at.localeCompare(b.at));
   const latest=changes.at(-1);const base=latest?.next||opening;
   if(!base)return {ready:false,problems:[],balances:null};
@@ -184,6 +247,12 @@
  }
  /** Mira si un lote pendiente dejaría stock inválido (espejo de la validación servidor Fase A). */
  function stockOk(meta){const r=balances(meta);return !r.ready||!r.problems.length;}
+ /** Reintento exponencial acotado: protege Supabase ante fallos persistentes sin perder la cola. */
+ function retryDelay(consecutiveFailures){
+  const n=Math.max(0,Math.min(7,Math.floor(Number(consecutiveFailures)||0)));
+  if(n===0)return 2000;
+  return Math.min(120000,2000*Math.pow(2,n-1));
+ }
  /** Gate serial para save/sync: evita carreras sobre meta. */
  function createGate(){
   let chain=Promise.resolve();
@@ -203,10 +272,10 @@
   if(stopped||!editingTab)return {action:'idle',ms:null,keepPending:true};
   if(busy)return {action:'defer',ms:null,keepPending:true};
   if(!active)return {action:'hold',ms:null,keepPending:true,reason:'deactivated'};
-  if(!online)return {action:'retry',ms:5000,keepPending:true,reason:'offline'};
+  if(!online)return {action:'idle',ms:null,keepPending:true,reason:'offline-wait-event'};
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,visibleMeta,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,allowedPending,permittedPending,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
