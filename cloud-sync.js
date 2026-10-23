@@ -107,13 +107,17 @@ const TankCloud=(()=>{
   return exclusive(async()=>{
    if(busy){rescheduleAfterGate();return;}
    busy=true;badge();
+   let rejected=null;
    try{
     const {data:current,error:accessError}=await client.from('tanques_members').select('*').eq('user_id',account).single();
     if(accessError)throw accessError;member=current;localStorage.setItem(MEMBER_CACHE_PREFIX+account,JSON.stringify(member));
     if(!member.active){
+     // Un perfil desactivado deja de visualizar datos remotos. La cola local se conserva.
+     meta.rows={};meta.conflicts={};members=[];
      message=`Acceso desactivado · ${count()} pendientes conservados. Descarga una copia JSON; no se han descartado.`;
      return;
     }
+    if(member.role!=='gerencia')members=[];
     await pull();
     if(!Object.keys(meta.conflicts).length){
      const sent=C.batch(meta);
@@ -124,9 +128,9 @@ const TankCloud=(()=>{
        const msg=error.message||'';
        if(/CONFLICT/i.test(msg)){
         await pull();
-        message='Conflicto de revisión. Conservamos tus pendientes.';
+        rejected='conflict';
        }else if(/STOCK/i.test(msg)){
-        message='El servidor rechazó el lote por existencias inválidas. Pendientes conservados.';
+        rejected='stock';
        }else throw error;
       }else{
        C.acknowledge(meta,sent,data);
@@ -135,14 +139,33 @@ const TankCloud=(()=>{
      await pull();
     }
     meta.lastSync=new Date().toISOString();
-    if(Object.keys(meta.conflicts).length)message=`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
-    else if(count())message=`Quedan ${count()} pendientes · ${new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;
-    else message='Actualizado · '+new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-   }catch(e){message=e.message||'No se ha podido conectar. Reintentando';}
-   finally{
+    if(Object.keys(meta.conflicts).length){
+     consecutiveFailures=0;
+     message=`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
+    }else if(rejected==='stock'&&count()){
+     consecutiveFailures++;
+     message='El servidor rechazó el lote por existencias inválidas. Pendientes conservados; reintento progresivo.';
+    }else if(rejected==='conflict'&&count()){
+     consecutiveFailures++;
+     message='Conflicto de revisión. Pendientes conservados; reintento progresivo.';
+    }else{
+     consecutiveFailures=0;
+     if(count())message=`Quedan ${count()} pendientes · ${new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;
+     else message='Actualizado · '+new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    }
+   }catch(e){
+    consecutiveFailures++;
+    const reason=e?.message||'No se ha podido conectar';
+    message=/(Permiso denegado|no autorizado|permission denied|JWT|401|403)/i.test(reason)
+     ?'Acceso rechazado por el servidor. Pendientes conservados; revisión de permisos necesaria.'
+     :reason+' · pendientes conservados; reintento progresivo';
+   }finally{
     busy=false;
-    try{await persistRemote();}catch(err){message=err.message||message;}
-    schedule(count()&&!Object.keys(meta.conflicts).length?2000:15000);
+    try{await persistRemote();}catch(err){consecutiveFailures++;message=err.message||message;}
+    // Reducción de carga y batería: de 2 s hasta 120 s tras fallos repetidos.
+    // Nunca borrar ni confirmar pendientes después de una respuesta fallida.
+    schedule(count()&&!Object.keys(meta.conflicts).length
+     ?C.retryDelay(consecutiveFailures):15000);
    }
   });
  }
