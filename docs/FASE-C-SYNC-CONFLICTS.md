@@ -21,11 +21,11 @@ Una carga, descarga o corrección puede comenzar sin cobertura, pero no debe per
 
 - `sync-core.js`: `retryDelay` y `reconcileSnapshot`.
 - `cloud-sync.js`: prefijo de membresía y bloqueo multi-pestaña por entorno; captura sobre copia de `meta`, commit IndexedDB y solo entonces sustitución de estado; reconstrucción de filas RLS desde `pull` completo; retroceso de reintentos, conservación de pendientes y errores de inventario visibles.
-- `tests/fase-c-resilience.test.js`: ocho regresiones para reintentos, cambios de visibilidad RLS, respuesta perdida, conflicto optimista, aislamiento y orden del commit durable.
+- `tests/fase-c-resilience.test.js`: regresiones para reintentos, cambios de visibilidad RLS, respuesta perdida, conflicto optimista, aislamiento y orden del commit durable.
 - `tests/fase-c-idb.test.js`: integración simulada con fallo de transacción IndexedDB antes del commit y recuperación del mismo movimiento, sin perder ni duplicar la cola.
 - `npm run test:fase-c`: pruebas específicas. `npm test`: pruebas previas más Fase C.
 
-La batería ampliada de **12 escenarios** de Fase C se ha ejecutado contra las fuentes de la rama en un intérprete JavaScript aislado y ha pasado (incluye simulación de fallo transaccional en IndexedDB). También se comprobó con un arnés JavaScript un fallo transaccional de IndexedDB seguido de una captura recuperada. El test equivalente de Node se ha añadido a la rama. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
+La batería ampliada de **16 escenarios** de Fase C se ha ejecutado contra las fuentes de la rama en un intérprete JavaScript aislado y ha pasado (incluye simulación de fallo transaccional en IndexedDB). También se comprobó con un arnés JavaScript un fallo transaccional de IndexedDB seguido de una captura recuperada. El test equivalente de Node se ha añadido a la rama. **La ejecución integral de `npm test` en Node y pruebas en dos PWA reales sigue pendiente**; no afirmar que están superadas hasta ejecutarlas.
 
 ## Matriz obligatoria de validación C2 (sin tocar producción)
 
@@ -46,7 +46,7 @@ La batería ampliada de **12 escenarios** de Fase C se ha ejecutado contra las f
 
 ## Riesgos abiertos C3 (bloquean salida a producción)
 
-- **Cambio de rol con pendientes antiguos:** la cola pertenece a la cuenta, no se separa todavía por permiso de operación. Debe definirse retención segura, cuarentena de pendientes no autorizados, cambio inmediato a perfil permitido y recuperación supervisada.
+- **Cambio de rol con pendientes antiguos:** ya se conserva una cola en cuarentena por autorización de servidor y se evita enviarla de forma automática; queda pendiente validar recuperación supervisada por Gerencia en móviles reales y evaluar el comportamiento tras reconexiones.
 - **Privacidad de movimientos históricos:** las nuevas descargas ya no incluyen `client`, `dest` ni `planEntryId` en el movimiento de inventario compartido; esta corrección está validada con una prueba de regresión. **Pendiente:** verificar el tratamiento/migración de movimientos antiguos, y si el identificador opaco `visitId` debe ocultarse del resto de la flota mediante vistas o RPC filtradas. No confiar únicamente en filtros de interfaz.
 - **Caída de IndexedDB/cuota en iPhone:** planificar exportación de emergencia y pruebas reales de restauración; ninguna garantía si se borran datos del sitio antes de sincronizar.
 - **Concurrencia de pestañas sin Web Locks API:** decidir un mecanismo alternativo o dejar una sola pestaña editable cuando no esté disponible.
