@@ -140,3 +140,38 @@ test('Fase C: una visita nunca se divide cuando supera el espacio restante en lo
  assert.deepEqual(sent.map(r=>r.key),['movement:primer']);
  assert.ok(!sent.some(r=>r.payload.visitId==='v1'));
 });
+
+test('Fase C: pendientes de usuario revocado no se envían, pero otra visita independiente sí',()=>{
+ const m=C.empty();
+ m.pending={
+  'visit:conflict':{key:'visit:conflict',kind:'visit',vehicle:'camion',payload:{id:'conflict'}},
+  'movement:bad':{key:'movement:bad',kind:'movement',vehicle:'camion',payload:{id:'bad',visitId:'conflict',type:'DESCARGA'}},
+  'visit:good':{key:'visit:good',kind:'visit',vehicle:'camion',payload:{id:'good'}},
+  'movement:good':{key:'movement:good',kind:'movement',vehicle:'camion',payload:{id:'good',visitId:'good',type:'DESCARGA'}},
+  'movement:van':{key:'movement:van',kind:'movement',vehicle:'furgoneta',payload:{id:'van',type:'DESCARGA'}}
+ };
+ m.conflicts={'movement:bad':{key:'movement:bad',revision:2}};
+ const member={active:true,role:'reparto',vehicle:'camion'};
+ const batch=C.batch(m,500,{skipConflicts:true,allowRecord:r=>C.allowedPending(r,member)});
+ assert.deepEqual(batch.map(r=>r.key).sort(),['movement:good','visit:good']);
+ assert.ok(m.pending['movement:bad']);
+ assert.ok(m.pending['movement:van']);
+});
+
+test('Fase C: nuevo rol no vuelve a enviar acciones que ya no están permitidas',()=>{
+ const Gerencia={active:true,role:'gerencia'};
+ const Almacen={active:true,role:'almacen'};
+ const Camion={active:true,role:'reparto',vehicle:'camion'};
+ const Furgoneta={active:true,role:'reparto',vehicle:'furgoneta'};
+ const load={kind:'movement',vehicle:'camion',payload:{type:'CARGA'}};
+ const delivery={kind:'movement',vehicle:'camion',payload:{type:'DESCARGA'}};
+ const customer={kind:'customer',payload:{id:'cliente-demo'}};
+ assert.equal(C.allowedPending(customer,Gerencia),true);
+ assert.equal(C.allowedPending(customer,Almacen),false);
+ assert.equal(C.allowedPending(load,Almacen),true);
+ assert.equal(C.allowedPending(delivery,Almacen),false);
+ assert.equal(C.allowedPending(delivery,Camion),true);
+ assert.equal(C.allowedPending(delivery,Furgoneta),false);
+ assert.equal(C.allowedPending(load,Camion),false);
+ assert.equal(C.allowedPending(delivery,{...Camion,active:false}),false);
+});
