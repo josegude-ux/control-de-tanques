@@ -144,9 +144,14 @@ const TankCloud=(()=>{
     }
     await pull();
     meta.lastSync=new Date().toISOString();
+    const heldByRole=Object.values(meta.pending).some(r=>!C.allowedPending(r,member));
+    const hasAllowed=Object.values(meta.pending).some(r=>C.allowedPending(r,member));
     if(Object.keys(meta.conflicts).length){
      consecutiveFailures=0;
      message=`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
+    }else if(heldByRole&&!hasAllowed){
+     consecutiveFailures=0;
+     message='Operaciones pendientes retenidas por cambio de permisos. No se envían ni borran; consulta a Gerencia.';
     }else if(rejected==='stock'&&count()){
      consecutiveFailures++;
      message='El servidor rechazó el lote por existencias inválidas. Pendientes conservados; reintento progresivo.';
@@ -169,7 +174,8 @@ const TankCloud=(()=>{
     try{await persistRemote();}catch(err){consecutiveFailures++;message=err.message||message;}
     // Reducción de carga y batería: de 2 s hasta 120 s tras fallos repetidos.
     // Nunca borrar ni confirmar pendientes después de una respuesta fallida.
-    schedule(count()&&!Object.keys(meta.conflicts).length
+    const sendable=Object.values(meta.pending).some(r=>C.allowedPending(r,member));
+    schedule(sendable&&!Object.keys(meta.conflicts).length
      ?C.retryDelay(consecutiveFailures):15000);
    }
   });
