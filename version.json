@@ -1,5 +1,5 @@
 {
-  "version": "0.9.27",
-  "release": "2026-10-22",
-  "notes": "Vista previa del nuevo logo en Inicio e icono PWA; sin cambios en registros ni inventario"
+  "version": "0.9.28",
+  "release": "2026-10-23",
+  "notes": "Corrección del actualizador automático y configuración de iconos PWA; sin cambios en datos locales"
 }
