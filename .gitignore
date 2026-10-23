@@ -1,0 +1,6 @@
+node_modules/
+# Credenciales staging locales (no subir claves reales de DEMO)
+config.staging.js
+demo/config.local.js
+*.supabase.local.js
+

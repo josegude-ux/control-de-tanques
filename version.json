@@ -1,1 +1,1 @@
-{"version":"0.10.0","notes":"Supabase: sincronización automática, cola offline, perfiles autorizados y conflictos sin sobrescritura silenciosa."}
+{"version":"0.10.1","notes":"Fase A: seguridad de inventario, ajuste solo Gerencia, sync con reintentos y cola conservada."}
