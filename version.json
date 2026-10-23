@@ -1,5 +1,1 @@
-{
-  "version": "0.9.28",
-  "release": "2026-10-23",
-  "notes": "Corrección del actualizador automático y configuración de iconos PWA; sin cambios en datos locales"
-}
+{"version":"0.10.0","notes":"Supabase: sincronización automática, cola offline, perfiles autorizados y conflictos sin sobrescritura silenciosa."}

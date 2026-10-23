@@ -1,0 +1,113 @@
+/* Pure record/queue logic; shared with the Node regression tests. */
+(function(root){
+ const copy=x=>JSON.parse(JSON.stringify(x));
+ const stable=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+ const signature=r=>stable({kind:r.kind,vehicle:r.vehicle||null,payload:r.payload,deleted:!!r.deleted});
+ function extract(s){
+  const out={};
+  const add=(kind,id,payload,vehicle=null,deleted=false)=>{const key=kind+':'+id;out[key]={key,kind,payload:copy(payload),vehicle,deleted};};
+  if(s.role==='almacen'){
+   for(const l of s.loads||[])add('movement',l.id,{id:l.id,type:'CARGA',vehicle:l.vehicle,tank:l.index+1,litres:l.amount,loss:l.merma||0,time:l.at,cisternPending:!!l.cisternPending},l.vehicle);
+   for(const a of s.stockAdjustmentHistory||[])add('adjustment',a.id,a);
+  }
+  if(s.role==='reparto'){
+   for(const v of [...s.visits||[],...s.openVisit?[s.openVisit]:[]]){
+    add('visit',v.id,v,v.vehicle);
+    for(const d of v.discharges||[])add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:d.liters,loss:0,time:d.at,client:v.client,dest:d.dest,visitId:v.id,planEntryId:v.planEntryId||null},v.vehicle,!!v.cancelledAt);
+   }
+   for(const p of s.provisionalHistory||[])add('provisional',p.id,p,p.vehicle);
+  }
+  if(s.role==='gerencia'){
+   for(const c of s.customers||[])add('customer',c.id,c);
+   for(const [week,p] of Object.entries(s.weeklyPlans||{}))add('plan',week,p);
+   if(s.manager?.opening)add('opening','global',s.manager.opening);
+  }
+  return out;
+ }
+ function empty(){return {rows:{},pending:{},last:{},conflicts:{},lastSync:null};}
+ function capture(meta,s,user){
+  const current=extract(s),before=meta.last[s.role]||{};
+  for(const key of new Set([...Object.keys(before),...Object.keys(current)])){
+   let r=current[key];
+   if(r&&before[key]===signature(r))continue;
+   if(!r){if(!before[key])continue;const prev=meta.pending[key]||meta.rows[key];if(!prev)continue;r={...prev,deleted:true};}
+   const pending=meta.pending[key],remote=meta.rows[key];
+   meta.pending[key]={...copy(r),owner_id:remote?.owner_id||user,base:pending?.base??remote?.revision??0};
+  }
+  meta.last[s.role]=Object.fromEntries(Object.entries(current).map(([k,r])=>[k,signature(r)]));
+ }
+ function receive(meta,rows){
+  for(const r of rows){
+   const p=meta.pending[r.key];
+   if(p){
+    if(signature(p)===signature(r)){delete meta.pending[r.key];delete meta.conflicts[r.key];}
+    else if(r.revision!==p.base)meta.conflicts[r.key]=r;
+   }
+   meta.rows[r.key]=r;
+  }
+ }
+ function acknowledge(meta,sent,rows){
+  const byKey=Object.fromEntries(sent.map(r=>[r.key,r]));
+  for(const r of rows){
+   const p=meta.pending[r.key];meta.rows[r.key]=r;
+   if(p&&signature(p)===signature(byKey[r.key]))delete meta.pending[r.key];
+   else if(p)p.base=r.revision; // Edited while the request was in flight.
+   delete meta.conflicts[r.key];
+  }
+ }
+ function batch(meta,limit=500){
+  const groups=new Map();for(const r of Object.values(meta.pending)){
+   const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
+   if(!groups.has(group))groups.set(group,[]);groups.get(group).push(r);
+  }
+  const out=[];for(const group of groups.values()){
+   if(group.length>limit)throw Error('Una visita supera el límite de cambios; conserva la copia y solicita revisión');
+   if(out.length+group.length>limit)break;out.push(...group);
+  }return copy(out);
+ }
+ function resolve(meta,key,useLocal){
+  const p=meta.pending[key],r=meta.rows[key];if(!p||!r)return;
+  const visitId=p.kind==='visit'?p.payload.id:(p.payload.visitId||r.payload.visitId);
+  const keys=visitId?Object.keys(meta.pending).filter(k=>k==='visit:'+visitId||meta.pending[k].payload.visitId===visitId):[key];
+  for(const k of keys){
+   if(useLocal)meta.pending[k].base=meta.rows[k]?.revision||0;
+   else delete meta.pending[k];
+   delete meta.conflicts[k];
+  }
+ }
+ function effective(meta){return Object.values({...meta.rows,...meta.pending}).filter(r=>!r.deleted);}
+ function hydrate(meta,s,user){
+  const rows=effective(meta),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
+  s.loads=get('movement').filter(m=>m.type==='CARGA').map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:m.litres,merma:m.loss,at:m.time,cisternPending:m.cisternPending}));
+  const visits=rows.filter(r=>r.kind==='visit'&&(s.role==='gerencia'||r.owner_id===user)).map(r=>copy(r.payload));
+  s.visits=visits.filter(v=>v.ended);const open=visits.filter(v=>!v.ended&&!v.cancelledAt);
+  s.openVisit=open.find(v=>v.id===s.openVisit?.id)||open[0]||null;
+  s.customers=get('customer');s.weeklyPlans=Object.fromEntries(rows.filter(r=>r.kind==='plan').map(r=>[r.key.slice(5),copy(r.payload)]));
+  s.receivedPlans={};for(const [week,p] of Object.entries(s.weeklyPlans))for(const vehicle of ['camion','furgoneta'])s.receivedPlans[week+'|'+vehicle]={...p,week,vehicle,entries:(p.entries||[]).filter(e=>e.vehicle===vehicle)};
+  s.stockAdjustmentHistory=get('adjustment').sort((a,b)=>a.at.localeCompare(b.at));s.stockAdjustment=s.stockAdjustmentHistory.at(-1)||null;
+  s.provisionalHistory=get('provisional');s.provisionalOpenings={};for(const p of s.provisionalHistory)s.provisionalOpenings[p.vehicle]=p;
+  const opening=get('opening')[0];
+  s.manager??={journals:{},movements:{},incidents:[]};s.manager.opening=opening;
+  s.manager.movements=Object.fromEntries(get('movement').map(m=>[m.id,m]));s.manager.cancellations={};
+  return s;
+ }
+ function balances(meta){
+  const rows=effective(meta),opening=rows.find(r=>r.kind==='opening')?.payload;
+  const changes=rows.filter(r=>r.kind==='adjustment').map(r=>r.payload).sort((a,b)=>a.at.localeCompare(b.at));
+  const latest=changes.at(-1);const base=latest?.next||opening;
+  if(!base)return {ready:false,problems:[],balances:null};
+  const b={cisterna:base.cisterna,camion:[...base.camion],furgoneta:[...base.furgoneta]};
+  const movements=rows.filter(r=>r.kind==='movement').map(r=>r.payload).filter(m=>!latest||m.time>latest.at).sort((a,b)=>a.time.localeCompare(b.time)||a.id.localeCompare(b.id));
+  const problems=[];
+  for(const m of movements){
+   const t=m.tank-1,qty=Number(m.litres),loss=Number(m.loss||0);
+   if(!b[m.vehicle]||!Number.isInteger(t)||t<0||t>=b[m.vehicle].length||!Number.isFinite(qty)||qty<=0){problems.push(m.id);continue;}
+   b[m.vehicle][t]+=m.type==='CARGA'?qty-loss:-qty;
+   if(m.type==='CARGA'&&b.cisterna!=null)b.cisterna-=qty;
+   if(b[m.vehicle][t]<-0.001||b[m.vehicle][t]>1000.001||b.cisterna<0)problems.push(m.id);
+  }
+  for(const v of ['camion','furgoneta'])b[v]=b[v].map(n=>Math.round(n*100)/100);
+  return {ready:true,problems,balances:b};
+ }
+ const api={copy,signature,extract,empty,capture,receive,acknowledge,batch,resolve,effective,hydrate,balances};root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);
