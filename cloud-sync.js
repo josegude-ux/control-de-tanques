@@ -12,6 +12,8 @@ const TankCloud=(()=>{
  const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
  const PROFILE_PREFIX=cfg.cloudProfilePrefix||'tanques-cloud';
  const IS_STAGING=cfg.env==='staging';
+ const MEMBER_CACHE_PREFIX=IS_STAGING?'tanques-staging-member:':'tanques-member:';
+ const EDIT_LOCK_NAME='tanques-edit-session:'+(cfg.idbName||'cdt_demo_v1');
  const IS_DEMO_ROUTE=typeof location!=='undefined'&&location.pathname.split('/').includes('demo');
  const STAGING_HOST='iuqmzpahyjganhppcsur.supabase.co';
  /** Fail-closed: /demo/ nunca puede heredar la conexión de producción. */
@@ -105,7 +107,7 @@ const TankCloud=(()=>{
    busy=true;badge();
    try{
     const {data:current,error:accessError}=await client.from('tanques_members').select('*').eq('user_id',account).single();
-    if(accessError)throw accessError;member=current;localStorage.setItem('tanques-member:'+account,JSON.stringify(member));
+    if(accessError)throw accessError;member=current;localStorage.setItem(MEMBER_CACHE_PREFIX+account,JSON.stringify(member));
     if(!member.active){
      message=`Acceso desactivado · ${count()} pendientes conservados. Descarga una copia JSON; no se han descartado.`;
      return;
@@ -153,11 +155,11 @@ const TankCloud=(()=>{
  function fresh(role){return {...cleanProfile(role),tanks:{camion:[0,0,0],furgoneta:[0]},cisterna:0,cloudStockReady:false};}
  async function activate(session){
   user=session.user;account=user.id;stopped=false;
-  const cached=localStorage.getItem('tanques-member:'+account);member=cached?JSON.parse(cached):null;
+  const cached=localStorage.getItem(MEMBER_CACHE_PREFIX+account);member=cached?JSON.parse(cached):null;
   if(navigator.onLine){
    let r=await client.from('tanques_members').select('*').eq('user_id',account).maybeSingle();if(r.error)throw r.error;
    if(!r.data){const added=await client.from('tanques_members').insert({user_id:account,nombre:user.email||'Nuevo usuario'}).select().single();if(added.error)throw added.error;r=added;}
-   member=r.data;localStorage.setItem('tanques-member:'+account,JSON.stringify(member));
+   member=r.data;localStorage.setItem(MEMBER_CACHE_PREFIX+account,JSON.stringify(member));
   }
   // Claves estables entre versiones PWA: no renombrar o se pierden colas iPhone.
   // meta → tanques-cloud-meta:<uid> · perfiles → tanques-cloud:<uid>:<rol> · auth → tanques-auth-v1
@@ -174,7 +176,16 @@ const TankCloud=(()=>{
  }
  async function init(){
   try{assertStagingIsolation();}catch(e){message=e.message;badge();render();return;}
-  if(navigator.locks)navigator.locks.request('tanques-edit-session',{ifAvailable:true},async lock=>{editingTab=!!lock;badge();if(lock)await new Promise(()=>{});});
+  if(navigator.locks){
+   // El bloqueo es propio del entorno; dos pestañas del mismo entorno no editan a la vez.
+   editingTab=false;
+   navigator.locks.request(EDIT_LOCK_NAME,{ifAvailable:true},async lock=>{
+    editingTab=!!lock;badge();
+    if(!lock){if(connected())render();return;}
+    if(connected()){render();schedule(0);}
+    await new Promise(()=>{});
+   }).catch(err=>{editingTab=false;message='No se obtuvo el bloqueo de edición';console.warn(err);badge();});
+  }
   client=supabase.createClient(PROJECT_URL,KEY,{global:{fetch:async(input,options={})=>{const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);try{return await fetch(input,{...options,signal:controller.signal});}finally{clearTimeout(t);}}},auth:{storageKey:AUTH_KEY,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const {data,error}=await client.auth.getSession();if(error)message=error.message;
   if(data?.session)try{await activate(data.session)}catch(e){message=e.message;badge();}
