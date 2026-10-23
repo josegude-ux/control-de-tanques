@@ -1,14 +1,14 @@
 'use strict';
 /**
- * DEMO staging — sustituir URL y clave tras crear el proyecto Supabase Free independiente.
- * Este archivo NO debe apuntar nunca a oevetnszmfxeukcncwji (producción).
- * Ver config.staging.example.js y docs/FASE-B-STAGING.md
+ * DEMO staging conectado al proyecto independiente iuqmzpahyjganhppcsur.
+ * Solo clave PUBLICABLE, nunca service_role ni secret key.
+ * Nunca debe apuntar al proyecto Supabase de producción.
  */
 window.TankConfig={
  env:'staging',
  label:'DEMO STAGING · DATOS FICTICIOS · NO PRODUCCIÓN · v0.10.1',
- supabaseUrl:'https://YOUR_STAGING_PROJECT.supabase.co',
- supabaseAnonKey:'YOUR_STAGING_PUBLISHABLE_OR_ANON_KEY',
+ supabaseUrl:'https://iuqmzpahyjganhppcsur.supabase.co',
+ supabaseAnonKey:'sb_publishable_s79mWzONV_BvYzNZsZPJTQ_3xydPQtx',
  idbName:'cdt_staging_faseb_v1',
  authStorageKey:'tanques-auth-staging-v1',
  cloudMetaPrefix:'tanques-staging-meta',
