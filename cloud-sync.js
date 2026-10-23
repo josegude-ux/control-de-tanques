@@ -214,7 +214,7 @@ const TankCloud=(()=>{
   meta=await dbGet(key())||C.empty();
   meta.pending=meta.pending||{};meta.rows=meta.rows||{};meta.last=meta.last||{};meta.conflicts=meta.conflicts||{};
   const role=roleDefault();state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page=member?.active?'inicio':'admin';
-  if(member?.active){C.hydrate(meta,state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
+  if(member?.active){C.hydrate(visibleMeta(),state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
   else if(count()){message=`Cuenta desactivada o pendiente · ${count()} cambios locales conservados`;}
   else message=member?.active?'Conectado · sincronización automática':'Cuenta pendiente de autorización';
   if(member?.active)message='Conectado · sincronización automática';
