@@ -132,6 +132,18 @@
  function permittedPending(row,member,uid){
   return !!uid&&allowedPending(row,member,uid);
  }
+ /**
+  * Vista segura para una cuenta: aplica RLS a las filas remotas (ya filtradas
+  * por Supabase) y excluye del estado visible las operaciones locales que
+  * perdieron autorización. No borra NUNCA las operaciones de la cola real.
+  */
+ function visibleMeta(meta,member,uid){
+  const pending={};
+  for(const [key,row] of Object.entries(meta.pending||{})){
+   if(permittedPending(row,member,uid))pending[key]=row;
+  }
+  return {...meta,pending};
+ }
  function batch(meta,limit=500,options={}){
   const groups=new Map();for(const r of Object.values(meta.pending)){
    const group=r.kind==='visit'?'visit:'+r.payload.id:r.payload.visitId?'visit:'+r.payload.visitId:r.key;
@@ -257,6 +269,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,allowedPending,permittedPending,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,visibleMeta,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,allowedPending,permittedPending,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
