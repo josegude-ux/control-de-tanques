@@ -6,9 +6,11 @@ on:
   push:
     branches:
       - fix/fase-c-sync-resilience
+      - feat/asistente-operativo-a
   pull_request:
     branches:
       - fix/fase-a-seguridad-inventario
+      - fix/fase-c-sync-resilience
   workflow_dispatch:
 
 permissions:
@@ -56,6 +58,11 @@ jobs:
         run: npm run test:browser
       - name: Seguridad de roles e inventario en navegador
         run: npm run test:browser:fase-a
+      - name: Validación específica del asistente operativo A
+        run: |
+          node --check demo/assistant-a.js
+          node --check tests/browser-assistant-a.cjs
+          node tests/browser-assistant-a.cjs
 
   postgresql:
     name: PostgreSQL local - RLS, stock y concurrencia
