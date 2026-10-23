@@ -1,19 +1,20 @@
 /* Pure record/queue logic; shared with the Node regression tests. */
 (function(root){
  const copy=x=>JSON.parse(JSON.stringify(x));
+ const litres=n=>{const v=Math.round(Number(n)*100)/100;return Number.isFinite(v)?v:NaN;};
  const stable=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
  const signature=r=>stable({kind:r.kind,vehicle:r.vehicle||null,payload:r.payload,deleted:!!r.deleted});
  function extract(s){
   const out={};
   const add=(kind,id,payload,vehicle=null,deleted=false)=>{const key=kind+':'+id;out[key]={key,kind,payload:copy(payload),vehicle,deleted};};
   if(s.role==='almacen'){
-   for(const l of s.loads||[])add('movement',l.id,{id:l.id,type:'CARGA',vehicle:l.vehicle,tank:l.index+1,litres:l.amount,loss:l.merma||0,time:l.at,cisternPending:!!l.cisternPending},l.vehicle);
-   for(const a of s.stockAdjustmentHistory||[])add('adjustment',a.id,a);
+   for(const l of s.loads||[])add('movement',l.id,{id:l.id,type:'CARGA',vehicle:l.vehicle,tank:l.index+1,litres:litres(l.amount),loss:litres(l.merma||0),time:l.at,cisternPending:!!l.cisternPending},l.vehicle);
   }
   if(s.role==='reparto'){
    for(const v of [...s.visits||[],...s.openVisit?[s.openVisit]:[]]){
+    // Anulación conserva descargas en el saldo hasta conciliación de Gerencia (no tombstone automático).
     add('visit',v.id,v,v.vehicle);
-    for(const d of v.discharges||[])add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:d.liters,loss:0,time:d.at,client:v.client,dest:d.dest,visitId:v.id,planEntryId:v.planEntryId||null},v.vehicle,!!v.cancelledAt);
+    for(const d of v.discharges||[])add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,client:v.client,dest:d.dest,visitId:v.id,planEntryId:v.planEntryId||null,cancelled:!!v.cancelledAt},v.vehicle,false);
    }
    for(const p of s.provisionalHistory||[])add('provisional',p.id,p,p.vehicle);
   }
@@ -21,16 +22,27 @@
    for(const c of s.customers||[])add('customer',c.id,c);
    for(const [week,p] of Object.entries(s.weeklyPlans||{}))add('plan',week,p);
    if(s.manager?.opening)add('opening','global',s.manager.opening);
+   // Ajustes de existencias: solo Gerencia (auditoría vía sync + tanques_audit).
+   for(const a of s.stockAdjustmentHistory||[])add('adjustment',a.id,a);
   }
   return out;
  }
  function empty(){return {rows:{},pending:{},last:{},conflicts:{},lastSync:null};}
- function capture(meta,s,user){
+ function capture(meta,s,user,opts={}){
   const current=extract(s),before=meta.last[s.role]||{};
+  const forbidDelete=!!opts.forbidSyncedDelete;
   for(const key of new Set([...Object.keys(before),...Object.keys(current)])){
    let r=current[key];
    if(r&&before[key]===signature(r))continue;
-   if(!r){if(!before[key])continue;const prev=meta.pending[key]||meta.rows[key];if(!prev)continue;r={...prev,deleted:true};}
+   if(!r){
+    if(!before[key])continue;
+    const prev=meta.pending[key]||meta.rows[key];
+    if(!prev)continue;
+    if(forbidDelete&&meta.rows[key]&&(prev.kind==='movement'||prev.kind==='visit')){
+     throw Error('No se pueden borrar movimientos o visitas ya sincronizados. Conserva el historial o solicita anulación a Gerencia.');
+    }
+    r={...prev,deleted:true};
+   }
    const pending=meta.pending[key],remote=meta.rows[key];
    meta.pending[key]={...copy(r),owner_id:remote?.owner_id||user,base:pending?.base??remote?.revision??0};
   }
@@ -78,7 +90,7 @@
  function effective(meta){return Object.values({...meta.rows,...meta.pending}).filter(r=>!r.deleted);}
  function hydrate(meta,s,user){
   const rows=effective(meta),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
-  s.loads=get('movement').filter(m=>m.type==='CARGA').map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:m.litres,merma:m.loss,at:m.time,cisternPending:m.cisternPending}));
+  s.loads=get('movement').filter(m=>m.type==='CARGA').map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:litres(m.litres),merma:litres(m.loss),at:m.time,cisternPending:m.cisternPending}));
   const visits=rows.filter(r=>r.kind==='visit'&&(s.role==='gerencia'||r.owner_id===user)).map(r=>copy(r.payload));
   s.visits=visits.filter(v=>v.ended);const open=visits.filter(v=>!v.ended&&!v.cancelledAt);
   s.openVisit=open.find(v=>v.id===s.openVisit?.id)||open[0]||null;
@@ -96,18 +108,45 @@
   const changes=rows.filter(r=>r.kind==='adjustment').map(r=>r.payload).sort((a,b)=>a.at.localeCompare(b.at));
   const latest=changes.at(-1);const base=latest?.next||opening;
   if(!base)return {ready:false,problems:[],balances:null};
-  const b={cisterna:base.cisterna,camion:[...base.camion],furgoneta:[...base.furgoneta]};
+  const b={cisterna:base.cisterna==null?null:litres(base.cisterna),camion:base.camion.map(litres),furgoneta:base.furgoneta.map(litres)};
   const movements=rows.filter(r=>r.kind==='movement').map(r=>r.payload).filter(m=>!latest||m.time>latest.at).sort((a,b)=>a.time.localeCompare(b.time)||a.id.localeCompare(b.id));
   const problems=[];
   for(const m of movements){
-   const t=m.tank-1,qty=Number(m.litres),loss=Number(m.loss||0);
+   const t=m.tank-1,qty=litres(m.litres),loss=litres(m.loss||0);
    if(!b[m.vehicle]||!Number.isInteger(t)||t<0||t>=b[m.vehicle].length||!Number.isFinite(qty)||qty<=0){problems.push(m.id);continue;}
-   b[m.vehicle][t]+=m.type==='CARGA'?qty-loss:-qty;
-   if(m.type==='CARGA'&&b.cisterna!=null)b.cisterna-=qty;
-   if(b[m.vehicle][t]<-0.001||b[m.vehicle][t]>1000.001||b.cisterna<0)problems.push(m.id);
+   b[m.vehicle][t]=litres(b[m.vehicle][t]+(m.type==='CARGA'?qty-loss:-qty));
+   if(m.type==='CARGA'&&b.cisterna!=null)b.cisterna=litres(b.cisterna-qty);
+   if(b[m.vehicle][t]<-0.001||b[m.vehicle][t]>1000.001||(b.cisterna!=null&&b.cisterna<-0.001))problems.push(m.id);
   }
-  for(const v of ['camion','furgoneta'])b[v]=b[v].map(n=>Math.round(n*100)/100);
+  for(const v of ['camion','furgoneta'])b[v]=b[v].map(n=>litres(n));
+  if(b.cisterna!=null)b.cisterna=litres(b.cisterna);
   return {ready:true,problems,balances:b};
  }
- const api={copy,signature,extract,empty,capture,receive,acknowledge,batch,resolve,effective,hydrate,balances};root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
+ /** Mira si un lote pendiente dejaría stock inválido (espejo de la validación servidor Fase A). */
+ function stockOk(meta){const r=balances(meta);return !r.ready||!r.problems.length;}
+ /** Gate serial para save/sync: evita carreras sobre meta. */
+ function createGate(){
+  let chain=Promise.resolve();
+  return function exclusive(fn){
+   const run=chain.then(()=>fn(),()=>fn());
+   chain=run.then(()=>{},()=>{});
+   return run;
+  };
+ }
+ /**
+  * Política de reintento tras sync anticipado.
+  * busy → no tocar timer (lo reprograma el finally del sync en curso).
+  * offline + activos + pendientes → reintentar.
+  * desactivado + pendientes → no descartar; no empujar.
+  */
+ function retryAfterGate({busy,online,active,stopped,editingTab,pendingCount}){
+  if(stopped||!editingTab)return {action:'idle',ms:null,keepPending:true};
+  if(busy)return {action:'defer',ms:null,keepPending:true};
+  if(!active)return {action:'hold',ms:null,keepPending:true,reason:'deactivated'};
+  if(!online)return {action:'retry',ms:5000,keepPending:true,reason:'offline'};
+  if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
+  return {action:'idle',ms:15000,keepPending:true};
+ }
+ const api={copy,litres,signature,extract,empty,capture,receive,acknowledge,batch,resolve,effective,hydrate,balances,stockOk,createGate,retryAfterGate};
+ root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

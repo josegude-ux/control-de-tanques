@@ -1,7 +1,16 @@
-# Control de Tanques 0.10.0
+# Control de Tanques 0.10.1
 
 PWA móvil con Supabase, almacenamiento local y sincronización automática.
 Repositorio de esta aplicación: `josegude-ux/control-de-tanques`.
+
+## Fase A (rama `fix/fase-a-seguridad-inventario`)
+
+- Ajuste de existencias solo Gerencia (cliente + SQL pendiente de aplicar).
+- Sin borrado de visitas/movimientos sincronizados en modo conectado.
+- Anulación no restaura saldo automáticamente; historial conservado.
+- Cola IndexedDB: reintentos si `sync` sale anticipado; mutex save/sync; cuenta desactivada no descarta pendientes.
+- Migración SQL de revisión: `database/fase-a-seguridad-inventario.sql` (**no aplicada** a Supabase real hasta autorización).
+- Tests: `node --test tests/sync-core.test.js tests/fase-a.test.js`.
 
 ## Uso
 

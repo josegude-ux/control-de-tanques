@@ -4,21 +4,55 @@ const TankCloud=(()=>{
  const C=TankSyncCore, URL='https://oevetnszmfxeukcncwji.supabase.co',KEY='sb_publishable_HH9O16zA-hT7ElScoYOSUQ_u-tcD-ei';
  let client,user=null,member=null,meta=C.empty(),busy=false,timer=null,message='Conecta tu cuenta para sincronizar',members=[],editingTab=true;
  let account=null,stopped=false;
+ const exclusive=C.createGate();
  const count=()=>Object.keys(meta.pending).length;
  const key=()=>`tanques-cloud-meta:${account}`;
  const connected=()=>!!account;
  const permitted=r=>member?.active&&(member.role==='gerencia'||member.role===r);
+ const canAdjustStock=()=>!!member?.active&&member.role==='gerencia';
  const roleDefault=()=>member?.role==='gerencia'?'gerencia':(['almacen','reparto'].includes(member?.role)?member.role:'reparto');
- const status=()=>!editingTab?'Otra pestaña está editando; cierra esa pestaña y recarga.':!connected()?message:!member?.active?'Cuenta pendiente de autorización':!navigator.onLine?`Sin cobertura · ${count()} pendientes`:busy?`Sincronizando · ${count()} pendientes`:Object.keys(meta.conflicts).length?`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`:count()?`${count()} cambios pendientes · ${message}`:message;
- function badge(){const e=document.getElementById('cloudBadge');if(e)e.textContent=status();const b=document.getElementById('cloudForce');if(b)b.disabled=busy||!connected()||!editingTab;}
- function schedule(ms=1000){clearTimeout(timer);if(member?.active&&!stopped&&editingTab)timer=setTimeout(()=>sync(),ms);badge();}
+ const status=()=>{
+  if(!editingTab)return 'Otra pestaña está editando; cierra esa pestaña y recarga.';
+  if(!connected())return message;
+  if(member&&!member.active&&count())return `Cuenta desactivada · ${count()} pendientes conservados. Descarga copia JSON y contacta con Gerencia.`;
+  if(!member?.active)return 'Cuenta pendiente de autorización';
+  if(!navigator.onLine)return `Sin cobertura · ${count()} pendientes`;
+  if(busy)return `Sincronizando · ${count()} pendientes`;
+  if(Object.keys(meta.conflicts).length)return `Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
+  if(count())return `${count()} cambios pendientes · ${message}`;
+  return message;
+ };
+ function badge(){const e=document.getElementById('cloudBadge');if(e)e.textContent=status();const b=document.getElementById('cloudForce');if(b)b.disabled=busy||!connected()||!editingTab||(member&&!member.active&&!count());}
+ function schedule(ms=1000){
+  clearTimeout(timer);
+  if(stopped||!editingTab){badge();return;}
+  // Cuenta desactivada: no empujar, pero nunca descartar la cola.
+  if(member&&!member.active){badge();return;}
+  if(!member?.active){badge();return;}
+  timer=setTimeout(()=>sync(),ms);
+  badge();
+ }
+ function rescheduleAfterGate(){
+  const plan=C.retryAfterGate({busy,online:navigator.onLine,active:!!member?.active,stopped,editingTab,pendingCount:count()});
+  if(plan.action==='retry'&&plan.ms!=null){clearTimeout(timer);timer=setTimeout(()=>sync(),plan.ms);}
+  badge();
+  return plan;
+ }
  function tx(values){return new Promise((resolve,reject)=>{const t=db.transaction('state','readwrite');for(const [k,v] of values)t.objectStore('state').put(C.copy(v),k);t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error||Error('Guardado interrumpido'));});}
  async function save(s){
   if(!connected())return dbPut(profileKeys[s.role],s);
-  if(!editingTab)throw Error('Esta pestaña es de solo lectura');
-  if(!permitted(s.role))throw Error('Perfil no autorizado');
-  C.capture(meta,s,account);applyBalances(s);
-  await tx([[profileKeys[s.role],s],[key(),meta]]);schedule();
+  return exclusive(async()=>{
+   if(!editingTab)throw Error('Esta pestaña es de solo lectura');
+   if(!permitted(s.role))throw Error('Perfil no autorizado');
+   if(s.role==='gerencia'&&(s.stockAdjustmentHistory||[]).length&&!canAdjustStock())throw Error('Solo Gerencia puede ajustar existencias');
+   C.capture(meta,s,account,{forbidSyncedDelete:true});
+   applyBalances(s);
+   if(!C.stockOk(meta)&&s.cloudStockProblems?.length){
+    // Persist queue + problems; block new ops via canOperate — never drop pending.
+   }
+   await tx([[profileKeys[s.role],s],[key(),meta]]);
+   schedule();
+  });
  }
  function applyBalances(s){const r=C.balances(meta);s.cloudStockReady=r.ready;s.cloudStockProblems=r.problems;
   if(r.balances){s.tanks={camion:r.balances.camion,furgoneta:r.balances.furgoneta};s.cisterna=r.balances.cisterna??0;}
@@ -37,22 +71,53 @@ const TankCloud=(()=>{
  }
  async function sync(){
   clearTimeout(timer);
-  if(busy||!member?.active||!navigator.onLine||!editingTab||stopped){badge();return;}
-  busy=true;badge();
-  try{
-   const {data:current,error:accessError}=await client.from('tanques_members').select('*').eq('user_id',account).single();
-   if(accessError)throw accessError;member=current;localStorage.setItem('tanques-member:'+account,JSON.stringify(member));
-   if(!member.active)throw Error('Acceso desactivado por Gerencia');
-   await pull();
-   if(!Object.keys(meta.conflicts).length){
-    const sent=C.batch(meta);
-    // A visit and its discharge records travel in one transaction, never in partial chunks.
-    if(sent.length){const {data,error}=await client.rpc('tanques_sync_batch',{changes:sent});if(error)throw error;C.acknowledge(meta,sent,data);}
+  if(busy||stopped||!editingTab){badge();return;}
+  if(!member?.active){
+   if(count())message=`Cuenta desactivada · ${count()} pendientes conservados. Descarga copia JSON.`;
+   badge();return;
+  }
+  if(!navigator.onLine){rescheduleAfterGate();return;}
+  return exclusive(async()=>{
+   if(busy){rescheduleAfterGate();return;}
+   busy=true;badge();
+   try{
+    const {data:current,error:accessError}=await client.from('tanques_members').select('*').eq('user_id',account).single();
+    if(accessError)throw accessError;member=current;localStorage.setItem('tanques-member:'+account,JSON.stringify(member));
+    if(!member.active){
+     message=`Acceso desactivado · ${count()} pendientes conservados. Descarga una copia JSON; no se han descartado.`;
+     return;
+    }
     await pull();
+    if(!Object.keys(meta.conflicts).length){
+     const sent=C.batch(meta);
+     // A visit and its discharge records travel in one transaction, never in partial chunks.
+     if(sent.length){
+      const {data,error}=await client.rpc('tanques_sync_batch',{changes:sent});
+      if(error){
+       const msg=error.message||'';
+       if(/CONFLICT/i.test(msg)){
+        await pull();
+        message='Conflicto de revisión. Conservamos tus pendientes.';
+       }else if(/STOCK/i.test(msg)){
+        message='El servidor rechazó el lote por existencias inválidas. Pendientes conservados.';
+       }else throw error;
+      }else{
+       C.acknowledge(meta,sent,data);
+      }
+     }
+     await pull();
+    }
+    meta.lastSync=new Date().toISOString();
+    if(Object.keys(meta.conflicts).length)message=`Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
+    else if(count())message=`Quedan ${count()} pendientes · ${new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;
+    else message='Actualizado · '+new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+   }catch(e){message=e.message||'No se ha podido conectar. Reintentando';}
+   finally{
+    busy=false;
+    try{await persistRemote();}catch(err){message=err.message||message;}
+    schedule(count()&&!Object.keys(meta.conflicts).length?2000:15000);
    }
-   meta.lastSync=new Date().toISOString();message='Actualizado · '+new Date(meta.lastSync).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){message=e.message||'No se ha podido conectar. Reintentando';}
-  finally{busy=false;await persistRemote();schedule(count()&&!Object.keys(meta.conflicts).length?2000:15000);}
+  });
  }
  async function switchRole(role){
   if(!connected())return false;
@@ -75,7 +140,10 @@ const TankCloud=(()=>{
   meta=await dbGet(key())||C.empty();
   const role=roleDefault();state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page=member?.active?'inicio':'admin';
   if(member?.active){C.hydrate(meta,state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
-  message=member?.active?'Conectado · sincronización automática':'Cuenta pendiente de autorización';render();schedule(0);
+  else if(count()){message=`Cuenta desactivada o pendiente · ${count()} cambios locales conservados`;}
+  else message=member?.active?'Conectado · sincronización automática':'Cuenta pendiente de autorización';
+  if(member?.active)message='Conectado · sincronización automática';
+  render();schedule(0);
  }
  async function init(){
   if(navigator.locks)navigator.locks.request('tanques-edit-session',{ifAvailable:true},async lock=>{editingTab=!!lock;badge();if(lock)await new Promise(()=>{});});
@@ -101,7 +169,7 @@ const TankCloud=(()=>{
   if(act==='force'){if(connected()&&!member?.active){const {data,error}=await client.auth.getSession();if(error)throw error;if(data.session)await activate(data.session);}await sync();return;}
   if(act==='settings'){state.page='admin';render();return;}
   if(act==='logout'){
-   if(count())throw Error('Quedan cambios en este móvil. Sincroniza o resuelve los conflictos antes de cambiar de cuenta.');
+   if(count())throw Error('Quedan cambios en este móvil. Descarga una copia JSON y sincroniza o resuelve conflictos antes de cerrar sesión. No se descartarán automáticamente.');
    stopped=true;clearTimeout(timer);await client.auth.signOut({scope:'local'});location.reload();return;
   }
   if(act==='recover'){const email=document.getElementById('cloudEmail').value.trim();if(!email)throw Error('Introduce tu correo');const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw error;toast('Revisa tu correo para recuperar la contraseña');return;}
@@ -130,10 +198,12 @@ const TankCloud=(()=>{
   }
  }
  function panel(){
+  const pendingHint=connected()&&count()?`<p class="notice">Hay ${count()} cambios pendientes en este móvil. No se descartan solos. Descarga una copia JSON antes de borrar datos del sitio o desinstalar la PWA.</p>`:'';
+  const deactivated=connected()&&member&&!member.active&&count()?`<p class="notice error">Cuenta sin acceso activo con cola local. Conservamos ${count()} pendientes. Usa «Descargar copia JSON» en Más.</p>`:'';
   const login=!connected()?`<p class="hint">Usa la cuenta de Control de Cargas. Los perfiles anteriores quedan conservados en este móvil; la cuenta conectada tiene su propio espacio.</p><form id="cloudLoginForm" class="form"><label class="field">Correo<input id="cloudEmail" type="email" autocomplete="username" required></label><label class="field">Contraseña<input id="cloudPassword" type="password" autocomplete="current-password" required minlength="8"></label><button class="btn" type="submit">Conectar cuenta</button></form><button class="btn secondary" data-cloud="recover">Recuperar contraseña</button><button class="btn secondary" data-cloud="signup">Crear cuenta de trabajador</button>`:`<p>${esc(member?.nombre||user?.email||'Cuenta conectada')} · ${esc(member?.role||'pendiente')}</p><button class="btn secondary" data-cloud="logout">Cerrar sesión</button>`;
   const conflicts=Object.entries(meta.conflicts).map(([k,r])=>`<details><summary>Revisar ${esc(k)}</summary><p>Versión del servidor</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(r.payload,null,2))}</pre><p>Tu versión pendiente</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(meta.pending[k]?.payload,null,2))}</pre><button class="btn secondary" data-cloud="conflict-remote" data-key="${esc(k)}">Usar remota</button><button class="btn" data-cloud="conflict-local" data-key="${esc(k)}">Aplicar mi cambio</button></details>`).join('');
   const management=member?.role==='gerencia'?`<button class="btn secondary" data-cloud="members">Gestionar accesos</button><button class="btn secondary" data-cloud="import-catalog">Recuperar clientes del perfil anterior</button>${members.map(m=>`<div class="card"><b>${esc(m.nombre)}</b><select id="memberRole-${m.user_id}">${['pendiente','gerencia','almacen','reparto'].map(r=>`<option ${m.role===r?'selected':''}>${r}</option>`).join('')}</select><select id="memberVehicle-${m.user_id}"><option value="camion" ${m.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${m.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select><button class="btn secondary" data-cloud="member-save" data-id="${m.user_id}">Guardar acceso</button></div>`).join('')}`:'';
-  return `<div class="card"><h3>Cuenta y sincronización automática</h3><p>${esc(status())}</p>${login}<p class="hint">Al guardar, al recuperar conexión y mientras la app está abierta se sincroniza automáticamente. Si iPhone suspende la app, continúa al abrirla de nuevo.</p>${conflicts}${management}<div id="cloudPasswordPanel" hidden><form id="cloudPasswordForm"><input id="cloudNewPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Nueva contraseña"><button class="btn">Guardar contraseña</button></form></div></div>`;
+  return `<div class="card"><h3>Cuenta y sincronización automática</h3><p>${esc(status())}</p>${deactivated}${pendingHint}${login}<p class="hint">Al guardar, al recuperar conexión y mientras la app está abierta se sincroniza automáticamente. Si iPhone suspende la app, continúa al abrirla de nuevo.</p>${conflicts}${management}<div id="cloudPasswordPanel" hidden><form id="cloudPasswordForm"><input id="cloudNewPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Nueva contraseña"><button class="btn">Guardar contraseña</button></form></div></div>`;
  }
  function decorate(){
   badge();if(!connected())return;
@@ -147,12 +217,12 @@ const TankCloud=(()=>{
    ['La v1 registra los movimientos y conserva los saldos locales. El Excel diario se genera desde Más → Enviar jornada. El tiempo real queda pendiente.','El movimiento se comparte automáticamente con Reparto y Gerencia cuando hay conexión.'],
    ['Las correcciones y los reinicios se anotan en el historial local. Puedes generar el Excel diario desde Más → Enviar jornada. Solo datos de prueba.','Las correcciones y los reinicios se conservan y se sincronizan automáticamente.'],
    ['Confirmar carga de prueba','Confirmar carga'],['Visitas cerradas · pendientes de envío','Visitas cerradas · correcciones'],
-   ['Planificación importada','Planificación sincronizada'],['Guardar ajuste de existencias (DEMO)','Guardar ajuste de existencias'],['Ajuste inicial de existencias · DEMO','Ajuste de existencias compartidas']
+   ['Planificación importada','Planificación sincronizada'],['Guardar ajuste de existencias (DEMO)','Guardar ajuste de existencias'],['Ajuste inicial de existencias · DEMO','Ajuste de existencias (solo Gerencia)']
   ];
   const walker=document.createTreeWalker(screen,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())for(const [a,b] of replacements)if(node.textContent.includes(a))node.textContent=node.textContent.replaceAll(a,b);
-  const banner=document.querySelector('.demo-banner');if(banner)banner.textContent='VERSIÓN 0.10.0 · SINCRONIZACIÓN AUTOMÁTICA';
+  const banner=document.querySelector('.demo-banner');if(banner)banner.textContent='VERSIÓN 0.10.1 · FASE A SEGURIDAD INVENTARIO';
   if(!member?.active||!editingTab)document.querySelectorAll('#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) input,#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) button').forEach(e=>e.disabled=true);
  }
- function canOperate(){if(!connected())return true;if(!member?.active||!editingTab){toast('Necesitas acceso autorizado');return false;}if(!state.cloudStockReady){toast('Gerencia debe establecer las existencias iniciales en el panel de saldos');return false;}if(state.cloudStockProblems?.length||Object.keys(meta.conflicts).length){toast('Revisa las incidencias de existencias o sincronización antes de continuar');return false;}return true;}
- return {init,save,switchRole,panel,decorate,connected,permitted,canOperate,status,sync,member:()=>member,meta:()=>meta};
+ function canOperate(){if(!connected())return true;if(!member?.active||!editingTab){toast(count()?'Cuenta sin acceso: tus pendientes siguen guardados. Descarga copia JSON.':'Necesitas acceso autorizado');return false;}if(!state.cloudStockReady){toast('Gerencia debe establecer las existencias iniciales en el panel de saldos');return false;}if(state.cloudStockProblems?.length||Object.keys(meta.conflicts).length){toast('Revisa las incidencias de existencias o sincronización antes de continuar');return false;}return true;}
+ return {init,save,switchRole,panel,decorate,connected,permitted,canAdjustStock,canOperate,status,sync,member:()=>member,meta:()=>meta,count};
 })();
