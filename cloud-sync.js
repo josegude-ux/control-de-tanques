@@ -31,6 +31,15 @@ const TankCloud=(()=>{
  let account=null,stopped=false,consecutiveFailures=0;
  const exclusive=C.createGate();
  const count=()=>Object.keys(meta.pending).length;
+ const eligibleCount=()=>Object.values(meta.pending).filter(r=>C.permittedPending(r,member,account)).length;
+ const quarantinedCount=()=>count()-eligibleCount();
+ function visibleMeta(source=meta){
+  // Pendientes restringidos para las vistas; NO se eliminan de la cola original.
+  if(!connected()||!member?.active)return {...source,rows:{},pending:{}};
+  return {...source,pending:Object.fromEntries(
+   Object.entries(source.pending).filter(([,r])=>C.permittedPending(r,member,account))
+  )};
+ }
  const key=()=>`${META_PREFIX}:${account}`;
  const connected=()=>!!account;
  const permitted=r=>member?.active&&(member.role==='gerencia'||member.role===r);
@@ -44,6 +53,7 @@ const TankCloud=(()=>{
   if(!navigator.onLine)return `Sin cobertura · ${count()} pendientes`;
   if(busy)return `Sincronizando · ${count()} pendientes`;
   if(Object.keys(meta.conflicts).length)return `Revisión necesaria · ${Object.keys(meta.conflicts).length} conflictos`;
+  if(quarantinedCount())return `${quarantinedCount()} pendientes retenidos por cambio de permisos · ${eligibleCount()} autorizados`;
   if(count())return `${count()} cambios pendientes · ${message}`;
   return message;
  };
@@ -81,11 +91,11 @@ const TankCloud=(()=>{
    schedule();
   });
  }
- function applyBalances(s,source=meta){const r=C.balances(source);s.cloudStockReady=r.ready;s.cloudStockProblems=r.problems;
+ function applyBalances(s,source=meta){const r=C.balances(visibleMeta(source));s.cloudStockReady=r.ready;s.cloudStockProblems=r.problems;
   if(r.balances){s.tanks={camion:r.balances.camion,furgoneta:r.balances.furgoneta};s.cisterna=r.balances.cisterna??0;}
  }
  async function persistRemote(){
-  C.hydrate(meta,state,account);applyBalances(state);
+  C.hydrate(visibleMeta(),state,account);applyBalances(state);
   if(member?.role==='reparto')state.vehicle=member.vehicle;
   meta.last[state.role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));
   await tx([[profileKeys[state.role],state],[key(),meta]]);
@@ -184,7 +194,7 @@ const TankCloud=(()=>{
   if(!connected())return false;
   if(!permitted(role)){toast('Este usuario no tiene permiso para ese perfil');return true;}
   await save(state);state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page='inicio';
-  C.hydrate(meta,state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;
+  C.hydrate(visibleMeta(),state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;
   meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));
   await tx([[profileKeys[role],state],[key(),meta]]);render();return true;
  }
