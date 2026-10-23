@@ -14,7 +14,7 @@ window.TankConfig={
  cloudMetaPrefix:'tanques-staging-meta',
  cloudProfilePrefix:'tanques-staging',
  swCachePrefix:'control-tanques-staging-',
- swCache:'control-tanques-staging-v0101-fase-b',
+ swCache:'control-tanques-staging-v0101-connected',
  productionHosts:['oevetnszmfxeukcncwji.supabase.co'],
  demoOpening:{cisterna:10000,camion:[500,400,300],furgoneta:[800]}
 };
