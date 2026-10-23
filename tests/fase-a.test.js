@@ -238,6 +238,19 @@ test('SQL Fase A preparado: RPC definer, lock, sin INSERT directo, SIN_APERTURA'
  assert.doesNotMatch(sql,/grant execute on function tanques_private\.stock_problems\(\) to authenticated/i);
  assert.match(sql,/revoke all on function tanques_private\.round2\(numeric\) from public, anon/i);
  assert.match(sql,/revoke all on function tanques_private\.stock_problems\(\) from public, anon, authenticated/i);
+ assert.match(sql,/affectsStock=false no admite sincronización de inventario/);
+});
+
+test('SQL Fase B staging definitiva: destino iuqmzpahyjganhppcsur y anti-prod',()=>{
+ const sql=fs.readFileSync(path.join(__dirname,'../database/fase-b-staging-seguridad.sql'),'utf8');
+ assert.match(sql,/iuqmzpahyjganhppcsur/);
+ assert.match(sql,/oevetnszmfxeukcncwji/);
+ assert.match(sql,/NO EJECUTAR en producción/i);
+ assert.match(sql,/affectsStock=false no admite sincronización de inventario/);
+ assert.match(sql,/pg_advisory_xact_lock\(881002301\)/);
+ assert.match(sql,/revoke insert, update, delete on public\.tanques_records from authenticated/i);
+ assert.match(sql,/security definer/i);
+ assert.match(sql,/SIN_APERTURA/);
 });
 
 test('referencia Cervecería Ejemplo 450 L no entra en opening de prueba',()=>{

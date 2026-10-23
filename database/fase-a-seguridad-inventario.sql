@@ -52,6 +52,10 @@ begin
  elsif new.revision<>1 then raise exception 'Revision inicial incorrecta'; end if;
 
  if new.kind='movement' then
+  -- Incidencias con affectsStock=false NO son movimientos de inventario.
+  if coalesce((new.payload->>'affectsStock')::boolean, true) is false then
+    raise exception 'Movimiento con affectsStock=false no admite sincronización de inventario';
+  end if;
   -- tank obligatorio y explícito (json null / ausente → inválido; no default a tanque 1).
   if new.payload->>'type' is null or new.payload->>'type' not in ('CARGA','DESCARGA') or new.vehicle is null
      or new.payload->>'vehicle' is distinct from new.vehicle
@@ -110,8 +114,12 @@ declare
  problems text[] := array[]::text[];
  has_mov boolean;
 begin
- -- Movements (incl. soft-deleted) cuentan para detectar actividad sin apertura.
- select exists(select 1 from public.tanques_records where kind='movement') into has_mov;
+ -- Solo movements que afectan stock cuentan para SIN_APERTURA.
+ select exists(
+   select 1 from public.tanques_records
+   where kind='movement'
+     and coalesce((payload->>'affectsStock')::boolean, true) is not false
+ ) into has_mov;
  select payload into opening from public.tanques_records
   where kind='opening' and not deleted order by key limit 1;
  select payload into latest from public.tanques_records
@@ -178,7 +186,7 @@ returns setof public.tanques_records
 language plpgsql security definer set search_path='' as $$
 declare
  c jsonb; r public.tanques_records; existing public.tanques_records;
- n int; problems text[]; uid uuid; role text; veh text;
+ n int; problems text[]; uid uuid; role text; veh text; pay jsonb;
 begin
  uid := auth.uid();
  if uid is null then raise exception 'Usuario no autorizado'; end if;
@@ -194,7 +202,11 @@ begin
  for c in select value from jsonb_array_elements(changes) loop
   if c->>'kind' is null or c->>'key' is null then raise exception 'Cambio inválido'; end if;
   veh := nullif(c->>'vehicle','');
-  if not tanques_private.can_write(c->>'kind', veh, c->'payload') then
+  pay := c->'payload';
+  if c->>'kind'='movement' and coalesce((pay->>'affectsStock')::boolean, true) is false then
+    raise exception 'Movimiento con affectsStock=false no admite sincronización de inventario';
+  end if;
+  if not tanques_private.can_write(c->>'kind', veh, pay) then
     raise exception 'Permiso denegado: %', c->>'key';
   end if;
 
@@ -202,7 +214,7 @@ begin
    begin
      insert into public.tanques_records(key,kind,owner_id,vehicle,payload,deleted)
      values(
-       c->>'key', c->>'kind', uid, veh, c->'payload',
+       c->>'key', c->>'kind', uid, veh, pay,
        coalesce((c->>'deleted')::boolean,false)
      ) returning * into r;
    exception when unique_violation then
@@ -214,11 +226,11 @@ begin
    if existing.owner_id is distinct from uid and role is distinct from 'gerencia' then
      raise exception 'Permiso denegado: %', c->>'key';
    end if;
-   if not tanques_private.can_write(existing.kind, veh, c->'payload') then
+   if not tanques_private.can_write(existing.kind, veh, pay) then
      raise exception 'Permiso denegado: %', c->>'key';
    end if;
    update public.tanques_records
-     set payload=c->'payload', vehicle=veh,
+     set payload=pay, vehicle=veh,
          deleted=coalesce((c->>'deleted')::boolean,false), revision=revision+1
      where key=c->>'key' and revision=(c->>'base')::int
      returning * into r;
