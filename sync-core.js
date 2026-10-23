@@ -168,17 +168,24 @@
    delete meta.conflicts[k];
   }
  }
- function effective(meta){return Object.values({...meta.rows,...meta.pending}).filter(r=>!r.deleted);}
+ /** Solo la vista descarta pendientes retenidos por cambios de permisos; la cola durable sigue intacta. */
+ function visiblePending(meta,member,user){
+  if(!member)return meta.pending;
+  return Object.fromEntries(Object.entries(meta.pending).filter(([,r])=>permittedPending(r,member,user)));
+ }
+ function effective(meta,member=null,user=null){
+  return Object.values({...meta.rows,...visiblePending(meta,member,user)}).filter(r=>!r.deleted);
+ }
  /** Filas para stock: los movements soft-deleted siguen contando hasta ajuste de Gerencia. */
- function stockRecords(meta){
-  const merged={...meta.rows,...meta.pending};
+ function stockRecords(meta,member=null,user=null){
+  const merged={...meta.rows,...visiblePending(meta,member,user)};
   return Object.values(merged).filter(r=>{
    if(r.kind==='movement')return true; // incluir deleted
    return !r.deleted;
   });
  }
- function hydrate(meta,s,user){
-  const rows=effective(meta),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
+ function hydrate(meta,s,user,member=null){
+  const rows=effective(meta,member,user),get=k=>rows.filter(r=>r.kind===k).map(r=>copy(r.payload));
   // Cargas: Almacén ve todas; Reparto no las materializa en su perfil (solo saldos vía balances).
   const loads=get('movement').filter(m=>m.type==='CARGA'&&Number.isInteger(m.tank)&&m.tank>=1)
    .map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:litres(m.litres),merma:litres(m.loss),at:m.time,cisternPending:m.cisternPending}));
@@ -216,8 +223,8 @@
   s.manager.movements=Object.fromEntries(get('movement').map(m=>[m.id,m]));s.manager.cancellations={};
   return s;
  }
- function balances(meta){
-  const rows=stockRecords(meta),opening=rows.find(r=>r.kind==='opening')?.payload;
+ function balances(meta,member=null,user=null){
+  const rows=stockRecords(meta,member,user),opening=rows.find(r=>r.kind==='opening')?.payload;
   const changes=rows.filter(r=>r.kind==='adjustment').map(r=>r.payload).sort((a,b)=>a.at.localeCompare(b.at));
   const latest=changes.at(-1);const base=latest?.next||opening;
   if(!base)return {ready:false,problems:[],balances:null};
