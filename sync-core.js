@@ -83,6 +83,23 @@
    meta.rows[r.key]=r;
   }
  }
+ /**
+  * La lectura RLS es una instantánea completa. Eliminar filas que han dejado
+  * de ser visibles (p.ej. baja, cambio de rol/vehículo), pero NUNCA eliminar
+  * operaciones locales pendientes: requieren conciliación o revisión.
+  */
+ function reconcileSnapshot(meta,rows){
+  const visible=new Set(rows.map(r=>r.key));
+  receive(meta,rows);
+  let removed=0;
+  for(const key of Object.keys(meta.rows)){
+   if(visible.has(key))continue;
+   delete meta.rows[key];
+   delete meta.conflicts[key];
+   removed++;
+  }
+  return removed;
+ }
  function acknowledge(meta,sent,rows){
   const byKey=Object.fromEntries(sent.map(r=>[r.key,r]));
   for(const r of rows){
@@ -213,6 +230,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
