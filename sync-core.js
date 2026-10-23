@@ -112,16 +112,6 @@
    delete meta.conflicts[r.key];
   }
  }
- /** La cola se conserva tras una revocación de permisos; se envía solo lo autorizado actualmente. */
- function allowedPending(record,member){
-  if(!member?.active||!record)return false;
-  if(member.role==='gerencia')return true;
-  const kind=record.kind, vehicle=record.vehicle, type=record.payload?.type;
-  if(member.role==='almacen')return kind==='movement'&&type==='CARGA';
-  if(member.role==='reparto')return vehicle===member.vehicle&&(
-   kind==='visit'||kind==='provisional'||(kind==='movement'&&type==='DESCARGA'));
-  return false;
- }
  /** Cliente conservador: nunca enviar pendientes incompatibles con el perfil vigente.
   * La autorización definitiva se vuelve a comprobar siempre en Supabase. */
  function permittedPending(row,member,uid){
@@ -263,6 +253,6 @@
   if(pendingCount>0)return {action:'retry',ms:2000,keepPending:true};
   return {action:'idle',ms:15000,keepPending:true};
  }
- const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,allowedPending,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,permittedPending,createGate,retryAfterGate};
+ const api={copy,litres,signature,validSource,extract,empty,capture,receive,reconcileSnapshot,acknowledge,batch,resolve,effective,stockRecords,hydrate,balances,stockOk,retryDelay,permittedPending,createGate,retryAfterGate};
  root.TankSyncCore=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
