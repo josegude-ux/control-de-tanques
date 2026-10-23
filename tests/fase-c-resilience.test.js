@@ -191,3 +191,27 @@ test('Fase C: nuevo rol no vuelve a enviar acciones que ya no están permitidas'
  assert.equal(C.permittedPending(load,Camion,'test-user'),false);
  assert.equal(C.permittedPending(delivery,{...Camion,active:false},'test-user'),false);
 });
+
+test('Fase C: el perfil reducido no muestra clientes pendientes anteriores ni descuenta operaciones retenidas',()=>{
+ const m=C.empty();
+ const opening={key:'opening:global',kind:'opening',revision:1,payload:{cisterna:10000,camion:[500,400,300],furgoneta:[800]}};
+ m.rows[opening.key]=opening;
+ m.pending['customer:c1']={key:'customer:c1',kind:'customer',owner_id:'worker',payload:{id:'c1',nombre:'No mostrar'}};
+ m.pending['movement:loadold']={key:'movement:loadold',kind:'movement',vehicle:'camion',owner_id:'worker',payload:{id:'loadold',type:'CARGA',vehicle:'camion',tank:1,litres:100,loss:0,time:'2026-10-24T00:00:00Z'}};
+ const member={active:true,role:'reparto',vehicle:'camion',user_id:'worker'};
+ const visible={...m,pending:Object.fromEntries(Object.entries(m.pending).filter(([,r])=>C.permittedPending(r,member,'worker')))};
+ assert.equal(Object.keys(visible.pending).length,0);
+ assert.equal(Object.keys(m.pending).length,2,'conservar registros originales para conciliación');
+ const state={role:'reparto',vehicle:'camion'};
+ C.hydrate(visible,state,'worker');
+ assert.equal(state.customers.length,0);
+ assert.equal(C.balances(visible).balances.camion[0],500,'carga antigua retenida no modifica saldo operativo local');
+});
+
+test('Fase C: toda restauración de perfiles conectados filtra la cola según membresía actual',()=>{
+ const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
+ assert.match(cloud,/function visibleMeta\(source=meta\)/);
+ assert.match(cloud,/C\.hydrate\(visibleMeta\(\),state,account\)/);
+ assert.match(cloud,/C\.balances\(visibleMeta\(source\)\)/);
+ assert.match(cloud,/C\.permittedPending\(r,member,account\)/);
+});
