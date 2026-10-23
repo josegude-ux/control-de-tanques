@@ -28,7 +28,7 @@ const TankCloud=(()=>{
   }
  }
  let client,user=null,member=null,meta=C.empty(),busy=false,timer=null,message='Conecta tu cuenta para sincronizar',members=[],editingTab=true;
- let account=null,stopped=false;
+ let account=null,stopped=false,consecutiveFailures=0;
  const exclusive=C.createGate();
  const count=()=>Object.keys(meta.pending).length;
  const key=()=>`${META_PREFIX}:${account}`;
@@ -70,16 +70,18 @@ const TankCloud=(()=>{
    if(!editingTab)throw Error('Esta pestaña es de solo lectura');
    if(!permitted(s.role))throw Error('Perfil no autorizado');
    if(s.role==='gerencia'&&(s.stockAdjustmentHistory||[]).length&&!canAdjustStock())throw Error('Solo Gerencia puede ajustar existencias');
-   C.capture(meta,s,account,{forbidSyncedDelete:true});
-   applyBalances(s);
-   if(!C.stockOk(meta)&&s.cloudStockProblems?.length){
-    // Persist queue + problems; block new ops via canOperate — never drop pending.
-   }
-   await tx([[profileKeys[s.role],s],[key(),meta]]);
+   // Dos fases: no dar una edición por capturada hasta terminar la transacción IDB.
+   // Si falla el guardado, meta.last anterior permite volver a capturar el cambio.
+   const staged=C.copy(meta);
+   C.capture(staged,s,account,{forbidSyncedDelete:true});
+   applyBalances(s,staged);
+   await tx([[profileKeys[s.role],s],[key(),staged]]);
+   meta=staged;
+   consecutiveFailures=0;
    schedule();
   });
  }
- function applyBalances(s){const r=C.balances(meta);s.cloudStockReady=r.ready;s.cloudStockProblems=r.problems;
+ function applyBalances(s,source=meta){const r=C.balances(source);s.cloudStockReady=r.ready;s.cloudStockProblems=r.problems;
   if(r.balances){s.tanks={camion:r.balances.camion,furgoneta:r.balances.furgoneta};s.cisterna=r.balances.cisterna??0;}
  }
  async function persistRemote(){
@@ -92,7 +94,7 @@ const TankCloud=(()=>{
  async function pull(){
   let after='';const rows=[];
   for(;;){let q=client.from('tanques_records').select('*').order('key').limit(500);if(after)q=q.gt('key',after);const {data,error}=await q;if(error)throw error;rows.push(...data);if(data.length<500)break;after=data.at(-1).key;}
-  C.receive(meta,rows);
+  C.reconcileSnapshot(meta,rows);
  }
  async function sync(){
   clearTimeout(timer);
