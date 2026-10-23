@@ -44,7 +44,8 @@ async function main() {
       const file=path.resolve(ROOT,'.'+safePath);
       if(!file.startsWith(ROOT+path.sep))throw Error('Invalid path');
       const mime=file.endsWith('.html')?'text/html':file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':file.endsWith('.webmanifest')?'application/manifest+json':'application/octet-stream';
-      res.writeHead(200,{'content-type':mime});res.end(fs.readFileSync(file));
+      const contents=fs.readFileSync(file);
+      res.writeHead(200,{'content-type':mime});res.end(contents);
     }catch(e){res.writeHead(404);res.end('Not found');}
   });
   await new Promise(resolve=>server.listen(8787,'127.0.0.1',resolve));
