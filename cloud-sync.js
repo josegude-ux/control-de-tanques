@@ -95,10 +95,17 @@ const TankCloud=(()=>{
   if(r.balances){s.tanks={camion:r.balances.camion,furgoneta:r.balances.furgoneta};s.cisterna=r.balances.cisterna??0;}
  }
  async function persistRemote(){
-  C.hydrate(visibleMeta(),state,account);applyBalances(state);
-  if(member?.role==='reparto')state.vehicle=member.vehicle;
-  meta.last[state.role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));
-  await tx([[profileKeys[state.role],state],[key(),meta]]);
+  // Commit simultáneo de vista autorizada y metadatos. Las operaciones
+  // revocadas permanecen solo en la cola durable; nunca se muestran ni
+  // se tienen en cuenta en las existencias visibles de otro perfil.
+  const stagedMeta=C.copy(meta),stagedState=C.copy(state);
+  const visible=visibleMeta(stagedMeta);
+  C.hydrate(visible,stagedState,account);applyBalances(stagedState,stagedMeta);
+  if(member?.role==='reparto')stagedState.vehicle=member.vehicle;
+  if(member&&!member.active)stagedState.page='admin';
+  stagedMeta.last[stagedState.role]=Object.fromEntries(Object.entries(C.extract(stagedState)).map(([k,r])=>[k,C.signature(r)]));
+  await tx([[profileKeys[stagedState.role],stagedState],[key(),stagedMeta]]);
+  meta=stagedMeta;state=stagedState;
   badge();if(['inicio','gerencia','historial','recibir-plan'].includes(state.page)&&!document.querySelector('input:focus,textarea:focus,select:focus'))render();
  }
  async function pull(){
