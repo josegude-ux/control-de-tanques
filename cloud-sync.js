@@ -118,6 +118,13 @@ const TankCloud=(()=>{
      return;
     }
     if(member.role!=='gerencia')members=[];
+    // Cambiar la vista activa si la membresía del servidor ha cambiado.
+    // La cola antigua se conserva y solo se sincronizan grupos autorizados.
+    if(!permitted(state.role)){
+     const nextRole=roleDefault();
+     state=await dbGet(profileKeys[nextRole])||fresh(nextRole);
+     state.role=nextRole;state.page='inicio';
+    }
     await pull();
     // Un conflicto bloquea solo su grupo/visita, no los demás movimientos independientes.
     const sent=C.batch(meta,500,{skipConflicts:true,allowRecord:r=>C.allowedPending(r,member)});
