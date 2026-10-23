@@ -12,7 +12,7 @@ const TankCloud=(()=>{
  const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
  const PROFILE_PREFIX=cfg.cloudProfilePrefix||'tanques-cloud';
  const IS_STAGING=cfg.env==='staging';
- const IS_DEMO_ROUTE=typeof location!=='undefined'&&/(?:^|\\/)demo(?:\\/|$)/.test(location.pathname);
+ const IS_DEMO_ROUTE=typeof location!=='undefined'&&location.pathname.split('/').includes('demo');
  const STAGING_HOST='iuqmzpahyjganhppcsur.supabase.co';
  /** Fail-closed: /demo/ nunca puede heredar la conexión de producción. */
  function assertStagingIsolation(){
