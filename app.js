@@ -198,18 +198,25 @@ async function deleteTestVisit(id){
 }
 async function cancelSentVisit(id){
  const v=(state.visits||[]).find(x=>x.id===id);
- if(state.role!=='reparto'||!v?.sentAt||v.cancelledAt)return toast('Esta visita no admite anulación');
+ // Conectado: visitas sincronizadas también se anulan (sin sentAt de Excel).
+ const synced=TankCloud.connected();
+ if(state.role!=='reparto'||!v||v.cancelledAt)return toast('Esta visita no admite anulación');
+ if(!v.sentAt&&!synced)return toast('Esta visita no admite anulación');
  if(!Array.isArray(v.discharges)||!v.discharges.length)return toast('Visita sin detalle de descargas');
  const reason=prompt('Motivo de la anulación (obligatorio):','Visita ficticia de prueba');
  if(reason===null)return;
  if(!reason.trim())return toast('Indica un motivo');
  const liters=v.discharges.reduce((sum,d)=>sum+Number(d.liters||0),0);
- if(!confirm(`¿Registrar anulación de ${v.client} (${fmt(liters)} L)?\nSe enviará a Gerencia en un Excel nuevo. El historial original se conserva. NO se modificarán automáticamente los saldos del vehículo.`))return;
+ const how=synced
+  ?'Se sincronizará la anulación. El historial y los litros descontados se conservan hasta que Gerencia concilie con un ajuste.'
+  :'Se enviará a Gerencia en un Excel nuevo. El historial original se conserva. NO se modificarán automáticamente los saldos del vehículo.';
+ if(!confirm(`¿Registrar anulación de ${v.client} (${fmt(liters)} L)?\n${how}`))return;
  const at=now();v.cancelledAt=at;v.cancelReason=reason.trim().slice(0,200);
  state.cancellations??=[];
  for(const d of v.discharges)state.cancellations.push({id:uid(),visitId:v.id,dischargeId:d.id,vehicle:v.vehicle,client:v.client,liters:Number(d.liters),at,reason:v.cancelReason});
  state.log.push({title:'Anulación pendiente de comunicar',at,desc:`${v.client} · ${fmt(liters)} L · ${v.cancelReason}. Saldos sin cambios hasta conciliación.`});
- invalidateDraft('reparto');await persist();toast('Anulación registrada. Genera un nuevo lote Excel para Gerencia.');
+ invalidateDraft('reparto');await persist();
+ toast(synced?'Anulación registrada. Se sincronizará sin restaurar existencias.':'Anulación registrada. Genera un nuevo lote Excel para Gerencia.');
 }
 function historyPage(){
  const today=localDay(now());
@@ -218,7 +225,8 @@ function historyPage(){
   const reason=testVisitBlockReason(v);
   const liters=(v.discharges||[]).reduce((sum,d)=>sum+Number(d.liters||0),0);
   const deleteBtn=TankCloud.connected()?'<div class="notice">Modo conectado: las visitas sincronizadas no se borran desde el historial.</div>':reason?`<div class="notice">No se puede eliminar automáticamente: ${esc(reason)}. No se han cambiado los datos.</div>`:`<button class="btn danger" type="button" data-act="delete-test-visit" data-id="${esc(v.id)}">Eliminar esta visita de prueba</button>`;
-  return card(`<h3>${esc(v.client||'Visita sin cliente')}</h3><p class="compact">${esc(v.vehicle||'Vehículo desconocido')} · ${fmt(liters)} L · ${v.ended?showTime(v.ended):'Sin cierre'}</p>${v.cancelledAt?`<div class="notice">Anulación registrada (${showTime(v.cancelledAt)}). ${v.cancellationSentAt?'Comunicada en un lote Excel':'Pendiente de exportar a Gerencia'}. Historial y saldos conservados.</div>`:v.sentAt?`<div class="notice">Visita enviada: requiere anulación comunicable a Gerencia, no borrado local.</div><button class="btn danger" type="button" data-act="cancel-sent-visit" data-id="${esc(v.id)}">Registrar anulación y comunicar a Gerencia</button>`:deleteBtn}`);
+  const canCancel=!v.cancelledAt&&(v.sentAt||TankCloud.connected());
+  return card(`<h3>${esc(v.client||'Visita sin cliente')}</h3><p class="compact">${esc(v.vehicle||'Vehículo desconocido')} · ${fmt(liters)} L · ${v.ended?showTime(v.ended):'Sin cierre'}</p>${v.cancelledAt?`<div class="notice">Anulación registrada (${showTime(v.cancelledAt)}). ${v.cancellationSentAt?'Comunicada en un lote Excel':TankCloud.connected()?'Pendiente de sincronizar':'Pendiente de exportar a Gerencia'}. Historial y saldos conservados.</div>`:canCancel?`<div class="notice">${TankCloud.connected()?'Visita sincronizada: anulación sin restaurar existencias (conciliación Gerencia).':'Visita enviada: requiere anulación comunicable a Gerencia, no borrado local.'}</div><button class="btn danger" type="button" data-act="cancel-sent-visit" data-id="${esc(v.id)}">Registrar anulación${TankCloud.connected()?'':' y comunicar a Gerencia'}</button>`:deleteBtn}`);
 }).join(''):'';
  return `<h2 class="heading">Historial local</h2><div class="notice">Almacén y Reparto muestran solo operaciones de hoy. Los registros anteriores permanecen guardados y accesibles desde Gerencia. Los lotes pendientes de días anteriores siguen disponibles para exportación.</div>${state.role==='reparto'?`<h3 class="heading">Visitas registradas · Revisión de pruebas</h3>${visitCards||'<div class="empty">No hay visitas cerradas guardadas en este perfil.</div>'}`:''}${movements.length?movements.map(m=>card(`<div class="row"><b>${esc(m.title)}</b><span class="tag">${showTime(m.at)}</span></div><p class="compact">${esc(m.desc)}</p>`)).join(''):'<div class="empty">Todavía no hay movimientos registrados.</div>'}`;
 }
@@ -346,10 +354,14 @@ async function saveReconciliation(){
  if(!opening)return toast('Primero guarda la apertura real aislada');
  const existing=await dbGet(REAL_RECON_KEY)||{records:[],createdAt:now()};
  if(existing.records.some(r=>r.id===PENDING_BARALLETE.id))return toast('Incidencia ya registrada; no se duplica');
+ // Invariante: origen desconocido → no tanque, no descuento.
+ if(PENDING_BARALLETE.sourceTank!=null||PENDING_BARALLETE.affectsStock!==false){
+  return toast('Incidencia mal formada: no se registra para proteger existencias');
+ }
  if(!confirm('¿Registrar la incidencia de 240,61 L SIN modificar existencias?'))return;
- existing.records.push({...cloneState(PENDING_BARALLETE),registeredAt:now()});
+ existing.records.push({...cloneState(PENDING_BARALLETE),registeredAt:now(),sourceTank:null,affectsStock:false});
  await dbPut(REAL_RECON_KEY,existing);
- toast('Incidencia guardada. Ningún saldo modificado.');
+ toast('Incidencia guardada. Ningún saldo modificado. Tanque de origen sigue pendiente.');
 }
 async function exportReconciliation(){
  const record=await dbGet(REAL_RECON_KEY);

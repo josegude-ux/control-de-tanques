@@ -124,10 +124,54 @@ test('8. existencias insuficientes y capacidad excedida',()=>{
 test('9. anulación conserva históricos y no restaura saldo automáticamente',()=>{
  const m=C.empty();
  C.receive(m,[opening20]);
- const visit={id:'v-can',vehicle:'camion',client:'BARALLETE BAR',started:'2026-10-21T16:00:00Z',ended:'2026-10-21T16:10:00Z',cancelledAt:'2026-10-21T17:00:00Z',discharges:[{id:'d-bar',source:0,dest:'1',reading:240.61,liters:240.61,at:'2026-10-21T16:05:00Z'}]};
+ const visit={id:'v-can',vehicle:'camion',client:'BAR X',started:'2026-10-21T16:00:00Z',ended:'2026-10-21T16:10:00Z',cancelledAt:'2026-10-21T17:00:00Z',discharges:[{id:'d-bar',source:0,dest:'1',reading:40,liters:40,at:'2026-10-21T16:05:00Z'}]};
  C.capture(m,{role:'reparto',visits:[visit],openVisit:null},'drv');
  assert.equal(m.pending['movement:d-bar'].deleted,false);
- assert.equal(C.balances(m).balances.camion[0],C.litres(977-240.61));
+ assert.equal(C.balances(m).balances.camion[0],C.litres(977-40));
+ // Soft-delete en meta no restaura saldo (proyección incluye movements deleted).
+ m.pending['movement:d-bar']={...m.pending['movement:d-bar'],deleted:true};
+ assert.equal(C.balances(m).balances.camion[0],C.litres(977-40));
+});
+
+test('9b. source=null no asigna tanque 1 ni descuenta (BARALLETE 240,61 L)',()=>{
+ const m=C.empty();
+ C.receive(m,[opening20]);
+ const before=C.balances(m).balances.camion.slice();
+ const visit={
+  id:'v-pending-origen',vehicle:'camion',client:'BARALLETE BAR',
+  started:'2026-10-21T16:00:00Z',ended:'2026-10-21T16:10:00Z',
+  discharges:[{id:'pendiente-barallete-2026-10-21-24061',source:null,sourceTank:null,dest:'3',reading:240.61,liters:240.61,at:'2026-10-21T16:05:00Z',affectsStock:false}]
+ };
+ C.capture(m,{role:'reparto',visits:[visit],openVisit:null,vehicle:'camion'},'drv');
+ assert.equal(m.pending['movement:pendiente-barallete-2026-10-21-24061'],undefined);
+ assert.ok(m.pending['visit:v-pending-origen']);
+ assert.deepEqual(C.balances(m).balances.camion,before);
+ // null+1 no debe colarse: sin movement de stock.
+ assert.equal(C.validSource({source:null}),false);
+ assert.equal(C.validSource({source:0}),true);
+});
+
+test('9c. Reparto no reenvía provisionales de otro vehículo',()=>{
+ const extracted=C.extract({
+  role:'reparto',vehicle:'camion',visits:[],openVisit:null,
+  provisionalHistory:[
+   {id:'p-fur',vehicle:'furgoneta',amounts:[100],at:'2026-10-21T07:00:00Z'},
+   {id:'p-cam',vehicle:'camion',amounts:[1,2,3],at:'2026-10-21T07:01:00Z'}
+  ]
+ });
+ assert.equal(extracted['provisional:p-fur'],undefined);
+ assert.ok(extracted['provisional:p-cam']);
+ const m=C.empty();
+ C.receive(m,[opening20,
+  {key:'provisional:p-fur',kind:'provisional',owner_id:'other',revision:1,deleted:false,vehicle:'furgoneta',
+   payload:{id:'p-fur',vehicle:'furgoneta',amounts:[100],at:'2026-10-21T07:00:00Z'}},
+  {key:'provisional:p-cam',kind:'provisional',owner_id:'drv',revision:1,deleted:false,vehicle:'camion',
+   payload:{id:'p-cam',vehicle:'camion',amounts:[1,2,3],at:'2026-10-21T07:01:00Z'}}
+ ]);
+ const s={role:'reparto',vehicle:'camion',visits:[],openVisit:null};
+ C.hydrate(m,s,'drv');
+ assert.equal(s.provisionalHistory.length,1);
+ assert.equal(s.provisionalHistory[0].vehicle,'camion');
 });
 
 test('10. precisión decimal sin descuadres (413,57 + operaciones)',()=>{
@@ -182,7 +226,9 @@ test('SQL Fase A preparado: RPC definer, lock, sin INSERT directo, SIN_APERTURA'
  assert.match(sql,/SIN_APERTURA/);
  assert.match(sql,/faltan existencias iniciales de Gerencia/);
  assert.match(sql,/unique_violation/);
- assert.match(sql,/Solo Gerencia puede anular/);
+ assert.match(sql,/No se puede borrar un movimiento sincronizado/);
+ assert.match(sql,/Solo Gerencia puede anular visitas sincronizadas/);
+ assert.match(sql,/jsonb_typeof\(new\.payload->'tank'\)<>'number'/);
  assert.match(sql,/NO ejecutar aún/i);
  assert.match(sql,/function public\.tanques_sync_batch\(changes jsonb\)[\s\S]*?security definer/i);
  assert.match(sql,/pg_advisory_xact_lock\(881002301\)/);

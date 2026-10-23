@@ -5,13 +5,18 @@
 **PR:** https://github.com/josegude-ux/control-de-tanques/pull/2  
 **Estado:** correcciones de seguridad PR #2 en SQL + tests. **Sin aplicar SQL en Supabase real, sin tocar `main`.**
 
-## Correcciones de seguridad (revisión PR #2)
+## Correcciones de seguridad (revisión PR #2 + riesgos A–D)
 
 | # | Problema | Corrección |
 |---|----------|------------|
 | 1 | INSERT/UPDATE directo en `tanques_records` eludía stock | `REVOKE INSERT/UPDATE/DELETE` a `authenticated`; escritura solo vía `tanques_sync_batch` **SECURITY DEFINER** con `can_write` |
 | 2 | Dos descargas concurrentes podían dejar saldo negativo | `pg_advisory_xact_lock(881002301)` + validación `stock_problems` al final del lote |
 | 3 | Movimientos sin apertura/ajuste de Gerencia | `stock_problems` → `SIN_APERTURA`; RPC lanza `STOCK: faltan existencias iniciales…` |
+| A | `source=null` → tanque 1 | `validSource` + SQL `tank` numérico obligatorio |
+| B | Datos de otro vehículo | Visitas por owner; provisionales por vehicle; Reparto sin loads ajenas |
+| C | Soft-delete restauraba saldo / anulación sync | Soft-delete `movement` prohibido; stock cuenta deleted; UI cancela en conectado |
+| D | Colas al actualizar PWA | Claves IDB estables; SW no toca IndexedDB |
+| — | BARALLETE 240,61 L | `affectsStock:false`, sin movement de stock |
 
 ## SQL preparado (NO ejecutado en Supabase real)
 

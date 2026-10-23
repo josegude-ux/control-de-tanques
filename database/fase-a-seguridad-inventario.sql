@@ -41,18 +41,24 @@ begin
  if TG_OP='UPDATE' then
   if new.key<>old.key or new.owner_id<>old.owner_id or new.kind<>old.kind then raise exception 'Identidad inmutable'; end if;
   if new.revision<>old.revision+1 then raise exception 'Revision incorrecta'; end if;
-  if new.deleted and not old.deleted and new.kind in ('movement','visit')
+  -- Soft-delete de movement prohibido: restauraría litros en proyección. Conciliar con adjustment.
+  if new.deleted and not old.deleted and new.kind='movement' then
+    raise exception 'No se puede borrar un movimiento sincronizado; Gerencia debe conciliar con un ajuste de existencias';
+  end if;
+  if new.deleted and not old.deleted and new.kind='visit'
      and coalesce(tanques_private.member_role(),'')<>'gerencia' then
-    raise exception 'Solo Gerencia puede anular movimientos o visitas sincronizados';
+    raise exception 'Solo Gerencia puede anular visitas sincronizadas';
   end if;
  elsif new.revision<>1 then raise exception 'Revision inicial incorrecta'; end if;
 
  if new.kind='movement' then
+  -- tank obligatorio y explícito (json null / ausente → inválido; no default a tanque 1).
   if new.payload->>'type' is null or new.payload->>'type' not in ('CARGA','DESCARGA') or new.vehicle is null
      or new.payload->>'vehicle' is distinct from new.vehicle
      or new.key is distinct from 'movement:'||(new.payload->>'id')
+     or new.payload->'tank' is null or jsonb_typeof(new.payload->'tank')<>'number'
      or coalesce((new.payload->>'litres')::numeric,0)<=0 or (new.payload->>'litres')::numeric>1000
-     or coalesce((new.payload->>'tank')::int,0) not between 1 and (case when new.vehicle='camion' then 3 else 1 end)
+     or (new.payload->>'tank')::int not between 1 and (case when new.vehicle='camion' then 3 else 1 end)
      or coalesce((new.payload->>'loss')::numeric,0) not between 0 and 1000
      or new.payload->>'time' is null then
     raise exception 'Movimiento inválido';
@@ -104,7 +110,8 @@ declare
  problems text[] := array[]::text[];
  has_mov boolean;
 begin
- select exists(select 1 from public.tanques_records where kind='movement' and not deleted) into has_mov;
+ -- Movements (incl. soft-deleted) cuentan para detectar actividad sin apertura.
+ select exists(select 1 from public.tanques_records where kind='movement') into has_mov;
  select payload into opening from public.tanques_records
   where kind='opening' and not deleted order by key limit 1;
  select payload into latest from public.tanques_records
@@ -123,13 +130,18 @@ begin
  ];
  furgoneta := array[tanques_private.round2((base->'furgoneta'->>0)::numeric)];
 
+ -- Proyectar TODOS los movements (también deleted): anulación ≠ restaurar saldo.
  for m in
    select payload from public.tanques_records
-   where kind='movement' and not deleted
+   where kind='movement'
+     and coalesce((payload->>'affectsStock')::boolean, true) is not false
      and (adj_at is null or payload->>'time' > adj_at)
    order by payload->>'time', payload->>'id'
  loop
-   t := coalesce((m.payload->>'tank')::int,0)-1;
+   if m.payload->'tank' is null or jsonb_typeof(m.payload->'tank')<>'number' then
+     problems := problems || array[coalesce(m.payload->>'id','?')]; continue;
+   end if;
+   t := (m.payload->>'tank')::int-1;
    qty := tanques_private.round2((m.payload->>'litres')::numeric);
    loss := tanques_private.round2(coalesce((m.payload->>'loss')::numeric,0));
    if m.payload->>'vehicle'='camion' then

@@ -185,6 +185,47 @@ begin
   end;
 end $$;
 
+-- --- Soft-delete de movement prohibido (no restaurar saldo) ---
+set role authenticated;
+select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
+do $$
+declare rev int;
+begin
+  select revision into rev from public.tanques_records where key='movement:d1';
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:d1','kind','movement','vehicle','camion','base',rev,'deleted',true,
+      'payload', (select payload from public.tanques_records where key='movement:d1')
+    )));
+    raise exception 'ASSERT FAIL: soft-delete movement debió rechazarse';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%borrar un movimiento%' and SQLERRM not like '%ajuste%' then
+      raise exception 'ASSERT FAIL: esperado rechazo soft-delete movement, got %', SQLERRM;
+    end if;
+    raise notice 'OK soft-delete movement rechazado: %', SQLERRM;
+  end;
+end $$;
+
+-- --- tank ausente / null → Movimiento inválido (no default tanque 1) ---
+select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:no-tank','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','no-tank','type','DESCARGA','vehicle','camion','litres',1,'loss',0,
+        'time','2026-10-21T11:30:00Z'
+      )
+    )));
+    raise exception 'ASSERT FAIL: movement sin tank debió rechazarse';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    raise notice 'OK movement sin tank rechazado: %', SQLERRM;
+  end;
+end $$;
+
 reset role;
 select public.test_assert(
   (select count(*) from public.tanques_records where key='movement:carga-1' and not deleted)=1,
@@ -192,6 +233,9 @@ select public.test_assert(
 select public.test_assert(
   (select count(*) from public.tanques_records where key='movement:d1' and not deleted)=1,
   'descarga persistida');
+select public.test_assert(
+  (select deleted from public.tanques_records where key='movement:d1')=false,
+  'movement d1 no soft-deleted');
 select public.test_assert(
   (select count(*) from public.tanques_records where key='adjustment:adj-1' and not deleted)=1,
   'ajuste gerencia persistido');
@@ -201,6 +245,9 @@ select public.test_assert(
 select public.test_assert(
   (select count(*) from public.tanques_records where key='movement:d-over')=0,
   'descarga insuficiente no persistida');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:no-tank')=0,
+  'movement sin tank no persistido');
 select public.test_assert(
   (select count(*) from public.tanques_audit)>=3,
   'auditoría tiene entradas');

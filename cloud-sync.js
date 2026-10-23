@@ -136,8 +136,11 @@ const TankCloud=(()=>{
    if(!r.data){const added=await client.from('tanques_members').insert({user_id:account,nombre:user.email||'Nuevo usuario'}).select().single();if(added.error)throw added.error;r=added;}
    member=r.data;localStorage.setItem('tanques-member:'+account,JSON.stringify(member));
   }
+  // Claves estables entre versiones PWA: no renombrar o se pierden colas iPhone.
+  // meta → tanques-cloud-meta:<uid> · perfiles → tanques-cloud:<uid>:<rol> · auth → tanques-auth-v1
   for(const role of Object.keys(profileKeys))profileKeys[role]=`tanques-cloud:${account}:${role}`;
   meta=await dbGet(key())||C.empty();
+  meta.pending=meta.pending||{};meta.rows=meta.rows||{};meta.last=meta.last||{};meta.conflicts=meta.conflicts||{};
   const role=roleDefault();state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page=member?.active?'inicio':'admin';
   if(member?.active){C.hydrate(meta,state,account);applyBalances(state);if(member.role==='reparto')state.vehicle=member.vehicle;meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
   else if(count()){message=`Cuenta desactivada o pendiente · ${count()} cambios locales conservados`;}
