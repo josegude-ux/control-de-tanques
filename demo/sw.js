@@ -1,12 +1,12 @@
 // Service worker DEMO staging — scope /demo/. No comparte caché con producción.
-const CACHE='control-tanques-staging-v0101-fase-b';
+const CACHE='control-tanques-staging-v0101-connected';
 const FILES=[
  './','./index.html','./config.js','./manifest.webmanifest',
  '../supabase-2.57.4.js','../sync-core.js?v=0.10.1','../cloud-sync.js?v=0.10.1','../app.js?v=0.10.1',
  '../styles.css?v=0.10.1','../xlsx-local.js?v=0.10.1','../xlsx-import-local.js?v=0.10.1',
  '../xlsx-transfer-local.js?v=0.10.1','../plan-import-local.js?v=0.10.1',
  '../icon.svg','../mahou-logo.png','../logo-control-tanques.png',
- '../Control_de_Tanques_icon_192.png','../Control_de_Tanques_icon_512.png','../version.json'
+ '../Control_de_Tanques_icon_192.png','../Control_de_Tanques_icon_512.png','./version.json'
 ];
 self.addEventListener('install',e=>{e.waitUntil((async()=>{
  const c=await caches.open(CACHE);
