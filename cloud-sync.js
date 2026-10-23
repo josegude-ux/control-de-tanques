@@ -1,12 +1,32 @@
 'use strict';
 // Bundled SDK, durable IndexedDB outbox, optimistic revisions and atomic server batches.
 const TankCloud=(()=>{
- const C=TankSyncCore, URL='https://oevetnszmfxeukcncwji.supabase.co',KEY='sb_publishable_HH9O16zA-hT7ElScoYOSUQ_u-tcD-ei';
+ const C=TankSyncCore;
+ const cfg=typeof window!=='undefined'&&window.TankConfig?window.TankConfig:{};
+ const PROD_HOST='oevetnszmfxeukcncwji.supabase.co';
+ const PROD_URL='https://'+PROD_HOST;
+ const PROD_KEY='sb_publishable_HH9O16zA-hT7ElScoYOSUQ_u-tcD-ei';
+ const URL=cfg.supabaseUrl||PROD_URL;
+ const KEY=cfg.supabaseAnonKey||PROD_KEY;
+ const AUTH_KEY=cfg.authStorageKey||'tanques-auth-v1';
+ const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
+ const PROFILE_PREFIX=cfg.cloudProfilePrefix||'tanques-cloud';
+ const IS_STAGING=cfg.env==='staging';
+ /** Impide que un build DEMO escriba en el proyecto Supabase de producción. */
+ function assertStagingIsolation(){
+  if(!IS_STAGING)return;
+  let host='';
+  try{host=new URL(URL).hostname;}catch{throw Error('STAGING: supabaseUrl inválida');}
+  const blocked=[PROD_HOST,...(cfg.productionHosts||[])];
+  if(blocked.includes(host)||/YOUR_STAGING/i.test(URL)||/YOUR_STAGING/i.test(KEY)){
+   throw Error('STAGING bloqueado: configura un proyecto Supabase independiente (no producción).');
+  }
+ }
  let client,user=null,member=null,meta=C.empty(),busy=false,timer=null,message='Conecta tu cuenta para sincronizar',members=[],editingTab=true;
  let account=null,stopped=false;
  const exclusive=C.createGate();
  const count=()=>Object.keys(meta.pending).length;
- const key=()=>`tanques-cloud-meta:${account}`;
+ const key=()=>`${META_PREFIX}:${account}`;
  const connected=()=>!!account;
  const permitted=r=>member?.active&&(member.role==='gerencia'||member.role===r);
  const canAdjustStock=()=>!!member?.active&&member.role==='gerencia';
@@ -138,7 +158,8 @@ const TankCloud=(()=>{
   }
   // Claves estables entre versiones PWA: no renombrar o se pierden colas iPhone.
   // meta → tanques-cloud-meta:<uid> · perfiles → tanques-cloud:<uid>:<rol> · auth → tanques-auth-v1
-  for(const role of Object.keys(profileKeys))profileKeys[role]=`tanques-cloud:${account}:${role}`;
+  // Claves por entorno: staging ≠ producción en el mismo iPhone.
+  for(const role of Object.keys(profileKeys))profileKeys[role]=`${PROFILE_PREFIX}:${account}:${role}`;
   meta=await dbGet(key())||C.empty();
   meta.pending=meta.pending||{};meta.rows=meta.rows||{};meta.last=meta.last||{};meta.conflicts=meta.conflicts||{};
   const role=roleDefault();state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page=member?.active?'inicio':'admin';
@@ -149,8 +170,9 @@ const TankCloud=(()=>{
   render();schedule(0);
  }
  async function init(){
+  try{assertStagingIsolation();}catch(e){message=e.message;badge();render();return;}
   if(navigator.locks)navigator.locks.request('tanques-edit-session',{ifAvailable:true},async lock=>{editingTab=!!lock;badge();if(lock)await new Promise(()=>{});});
-  client=supabase.createClient(URL,KEY,{global:{fetch:async(input,options={})=>{const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);try{return await fetch(input,{...options,signal:controller.signal});}finally{clearTimeout(t);}}},auth:{storageKey:'tanques-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  client=supabase.createClient(URL,KEY,{global:{fetch:async(input,options={})=>{const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);try{return await fetch(input,{...options,signal:controller.signal});}finally{clearTimeout(t);}}},auth:{storageKey:AUTH_KEY,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const {data,error}=await client.auth.getSession();if(error)message=error.message;
   if(data?.session)try{await activate(data.session)}catch(e){message=e.message;badge();}
   client.auth.onAuthStateChange((event,session)=>{
@@ -203,7 +225,10 @@ const TankCloud=(()=>{
  function panel(){
   const pendingHint=connected()&&count()?`<p class="notice">Hay ${count()} cambios pendientes en este móvil. No se descartan solos. Descarga una copia JSON antes de borrar datos del sitio o desinstalar la PWA.</p>`:'';
   const deactivated=connected()&&member&&!member.active&&count()?`<p class="notice error">Cuenta sin acceso activo con cola local. Conservamos ${count()} pendientes. Usa «Descargar copia JSON» en Más.</p>`:'';
-  const login=!connected()?`<p class="hint">Usa la cuenta de Control de Cargas. Los perfiles anteriores quedan conservados en este móvil; la cuenta conectada tiene su propio espacio.</p><form id="cloudLoginForm" class="form"><label class="field">Correo<input id="cloudEmail" type="email" autocomplete="username" required></label><label class="field">Contraseña<input id="cloudPassword" type="password" autocomplete="current-password" required minlength="8"></label><button class="btn" type="submit">Conectar cuenta</button></form><button class="btn secondary" data-cloud="recover">Recuperar contraseña</button><button class="btn secondary" data-cloud="signup">Crear cuenta de trabajador</button>`:`<p>${esc(member?.nombre||user?.email||'Cuenta conectada')} · ${esc(member?.role||'pendiente')}</p><button class="btn secondary" data-cloud="logout">Cerrar sesión</button>`;
+  const envHint=IS_STAGING
+   ?`<p class="notice">${esc(cfg.label||'DEMO STAGING · DATOS FICTICIOS')}</p><p class="hint">Usuarios de prueba del proyecto staging (no producción). Colas e IndexedDB aisladas.</p>`
+   :`<p class="hint">Usa la cuenta de Control de Cargas. Los perfiles anteriores quedan conservados en este móvil; la cuenta conectada tiene su propio espacio.</p>`;
+  const login=!connected()?`${envHint}<form id="cloudLoginForm" class="form"><label class="field">Correo<input id="cloudEmail" type="email" autocomplete="username" required></label><label class="field">Contraseña<input id="cloudPassword" type="password" autocomplete="current-password" required minlength="8"></label><button class="btn" type="submit">Conectar cuenta</button></form><button class="btn secondary" data-cloud="recover">Recuperar contraseña</button><button class="btn secondary" data-cloud="signup">Crear cuenta de trabajador</button>`:`<p>${esc(member?.nombre||user?.email||'Cuenta conectada')} · ${esc(member?.role||'pendiente')}${IS_STAGING?' · DEMO':''}</p><button class="btn secondary" data-cloud="logout">Cerrar sesión</button>`;
   const conflicts=Object.entries(meta.conflicts).map(([k,r])=>`<details><summary>Revisar ${esc(k)}</summary><p>Versión del servidor</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(r.payload,null,2))}</pre><p>Tu versión pendiente</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(meta.pending[k]?.payload,null,2))}</pre><button class="btn secondary" data-cloud="conflict-remote" data-key="${esc(k)}">Usar remota</button><button class="btn" data-cloud="conflict-local" data-key="${esc(k)}">Aplicar mi cambio</button></details>`).join('');
   const management=member?.role==='gerencia'?`<button class="btn secondary" data-cloud="members">Gestionar accesos</button><button class="btn secondary" data-cloud="import-catalog">Recuperar clientes del perfil anterior</button>${members.map(m=>`<div class="card"><b>${esc(m.nombre)}</b><select id="memberRole-${m.user_id}">${['pendiente','gerencia','almacen','reparto'].map(r=>`<option ${m.role===r?'selected':''}>${r}</option>`).join('')}</select><select id="memberVehicle-${m.user_id}"><option value="camion" ${m.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${m.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select><button class="btn secondary" data-cloud="member-save" data-id="${m.user_id}">Guardar acceso</button></div>`).join('')}`:'';
   return `<div class="card"><h3>Cuenta y sincronización automática</h3><p>${esc(status())}</p>${deactivated}${pendingHint}${login}<p class="hint">Al guardar, al recuperar conexión y mientras la app está abierta se sincroniza automáticamente. Si iPhone suspende la app, continúa al abrirla de nuevo.</p>${conflicts}${management}<div id="cloudPasswordPanel" hidden><form id="cloudPasswordForm"><input id="cloudNewPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Nueva contraseña"><button class="btn">Guardar contraseña</button></form></div></div>`;
@@ -223,9 +248,10 @@ const TankCloud=(()=>{
    ['Planificación importada','Planificación sincronizada'],['Guardar ajuste de existencias (DEMO)','Guardar ajuste de existencias'],['Ajuste inicial de existencias · DEMO','Ajuste de existencias (solo Gerencia)']
   ];
   const walker=document.createTreeWalker(screen,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())for(const [a,b] of replacements)if(node.textContent.includes(a))node.textContent=node.textContent.replaceAll(a,b);
-  const banner=document.querySelector('.demo-banner');if(banner)banner.textContent='VERSIÓN 0.10.1 · FASE A SEGURIDAD INVENTARIO';
+  const banner=document.querySelector('.demo-banner');
+  if(banner)banner.textContent=IS_STAGING?(cfg.label||'DEMO STAGING · DATOS FICTICIOS · v0.10.1'):'VERSIÓN 0.10.1 · FASE A SEGURIDAD INVENTARIO';
   if(!member?.active||!editingTab)document.querySelectorAll('#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) input,#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) button').forEach(e=>e.disabled=true);
  }
  function canOperate(){if(!connected())return true;if(!member?.active||!editingTab){toast(count()?'Cuenta sin acceso: tus pendientes siguen guardados. Descarga copia JSON.':'Necesitas acceso autorizado');return false;}if(!state.cloudStockReady){toast('Gerencia debe establecer las existencias iniciales en el panel de saldos');return false;}if(state.cloudStockProblems?.length||Object.keys(meta.conflicts).length){toast('Revisa las incidencias de existencias o sincronización antes de continuar');return false;}return true;}
- return {init,save,switchRole,panel,decorate,connected,permitted,canAdjustStock,canOperate,status,sync,member:()=>member,meta:()=>meta,count};
+ return {init,save,switchRole,panel,decorate,connected,permitted,canAdjustStock,canOperate,status,sync,member:()=>member,meta:()=>meta,count,assertStagingIsolation,isStaging:()=>IS_STAGING};
 })();
