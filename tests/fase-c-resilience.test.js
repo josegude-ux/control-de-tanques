@@ -103,3 +103,29 @@ test('Fase C: los registros remotos se reconcilian solo tras recuperar el listad
  assert.match(pull,/C\.reconcileSnapshot\(meta,rows\)/);
  assert.ok(pull.indexOf('C.reconcileSnapshot')>pull.indexOf('if(data.length<500)break'));
 });
+
+test('Fase C: conflicto en una visita no paraliza visitas ni cargas independientes',()=>{
+ const m=C.empty();
+ const visit1={key:'visit:v1',kind:'visit',payload:{id:'v1'}};
+ const discharge1={key:'movement:d1',kind:'movement',payload:{id:'d1',visitId:'v1'}};
+ const visit2={key:'visit:v2',kind:'visit',payload:{id:'v2'}};
+ const discharge2={key:'movement:d2',kind:'movement',payload:{id:'d2',visitId:'v2'}};
+ const load={key:'movement:load3',kind:'movement',payload:{id:'load3'}};
+ for(const r of [visit1,discharge1,visit2,discharge2,load])m.pending[r.key]=r;
+ m.conflicts['movement:d1']={...discharge1,revision:2};
+ const sent=C.batch(m,500,{skipConflicts:true});
+ assert.deepEqual(sent.map(r=>r.key),['visit:v2','movement:d2','movement:load3']);
+ assert.equal(Object.keys(m.pending).length,5,'no se pierde ningún pendiente');
+ assert.ok(m.conflicts['movement:d1'],'el conflicto permanece para revisión');
+});
+
+test('Fase C: una visita nunca se divide cuando supera el espacio restante en lote',()=>{
+ const m=C.empty();
+ m.pending['movement:primer']={key:'movement:primer',kind:'movement',payload:{id:'primer'}};
+ m.pending['visit:v1']={key:'visit:v1',kind:'visit',payload:{id:'v1'}};
+ m.pending['movement:d1']={key:'movement:d1',kind:'movement',payload:{id:'d1',visitId:'v1'}};
+ m.pending['movement:d2']={key:'movement:d2',kind:'movement',payload:{id:'d2',visitId:'v1'}};
+ const sent=C.batch(m,2,{skipConflicts:true});
+ assert.deepEqual(sent.map(r=>r.key),['movement:primer']);
+ assert.ok(!sent.some(r=>r.payload.visitId==='v1'));
+});
