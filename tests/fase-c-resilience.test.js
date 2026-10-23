@@ -71,6 +71,7 @@ test('Fase C: aislamiento entre aplicación DEMO y original para bloqueo, caché
  assert.match(cloud,/EDIT_LOCK_NAME='tanques-edit-session:'\+\(cfg\.idbName\|\|'cdt_demo_v1'\)/);
  assert.match(cloud,/navigator\.locks\.request\(EDIT_LOCK_NAME/);
  assert.match(cloud,/MEMBER_CACHE_PREFIX=IS_STAGING\?'tanques-staging-member:'/);
+ assert.match(cloud,/MEMBER_CACHE_PREFIX=IS_STAGING[^\n]+cfg\.idbName/);
  assert.match(cloud,/localStorage\.getItem\(MEMBER_CACHE_PREFIX\+account\)/);
  assert.match(cloud,/localStorage\.setItem\(MEMBER_CACHE_PREFIX\+account/);
  assert.doesNotMatch(cloud,/navigator\.locks\.request\('tanques-edit-session'/);
