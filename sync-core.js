@@ -26,7 +26,10 @@
     for(const d of v.discharges||[]){
      // Origen pendiente (p.ej. BARALLETE 240,61 L): no emitir movement de stock ni asignar tanque.
      if(!validSource(d))continue;
-     add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,client:v.client,dest:d.dest,visitId:v.id,planEntryId:v.planEntryId||null,cancelled:!!v.cancelledAt},v.vehicle,false);
+     // La tabla movement es visible a toda la flota para calcular saldos.
+     // Datos identificativos del cliente y tanque de destino permanecen SOLO en visit,
+     // que RLS limita a su repartidor y a Gerencia.
+     add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,visitId:v.id,cancelled:!!v.cancelledAt},v.vehicle,false);
     }
    }
    // Solo provisionales del vehículo asignado (evita reenviar los de otro móvil).
