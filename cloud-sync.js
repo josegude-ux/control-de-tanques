@@ -119,25 +119,23 @@ const TankCloud=(()=>{
     }
     if(member.role!=='gerencia')members=[];
     await pull();
-    if(!Object.keys(meta.conflicts).length){
-     const sent=C.batch(meta);
-     // A visit and its discharge records travel in one transaction, never in partial chunks.
-     if(sent.length){
-      const {data,error}=await client.rpc('tanques_sync_batch',{changes:sent});
-      if(error){
-       const msg=error.message||'';
-       if(/CONFLICT/i.test(msg)){
-        await pull();
-        rejected='conflict';
-       }else if(/STOCK/i.test(msg)){
-        rejected='stock';
-       }else throw error;
-      }else{
-       C.acknowledge(meta,sent,data);
-      }
+    // Un conflicto bloquea solo su grupo/visita, no los demás movimientos independientes.
+    const sent=C.batch(meta,500,{skipConflicts:true});
+    if(sent.length){
+     const {data,error}=await client.rpc('tanques_sync_batch',{changes:sent});
+     if(error){
+      const msg=error.message||'';
+      if(/CONFLICT/i.test(msg)){
+       await pull();
+       rejected='conflict';
+      }else if(/STOCK/i.test(msg)){
+       rejected='stock';
+      }else throw error;
+     }else{
+      C.acknowledge(meta,sent,data);
      }
-     await pull();
     }
+    await pull();
     meta.lastSync=new Date().toISOString();
     if(Object.keys(meta.conflicts).length){
      consecutiveFailures=0;
