@@ -6,7 +6,7 @@ const TankCloud=(()=>{
  const PROD_HOST='oevetnszmfxeukcncwji.supabase.co';
  const PROD_URL='https://'+PROD_HOST;
  const PROD_KEY='sb_publishable_HH9O16zA-hT7ElScoYOSUQ_u-tcD-ei';
- const URL=cfg.supabaseUrl||PROD_URL;
+ const PROJECT_URL=cfg.supabaseUrl||PROD_URL;
  const KEY=cfg.supabaseAnonKey||PROD_KEY;
  const AUTH_KEY=cfg.authStorageKey||'tanques-auth-v1';
  const META_PREFIX=cfg.cloudMetaPrefix||'tanques-cloud-meta';
@@ -19,9 +19,9 @@ const TankCloud=(()=>{
   if(IS_DEMO_ROUTE&&!IS_STAGING)throw Error('DEMO bloqueada: falta la configuración staging.');
   if(!IS_STAGING)return;
   let host='';
-  try{host=new URL(URL).hostname;}catch{throw Error('STAGING: supabaseUrl inválida');}
+  try{host=new URL(PROJECT_URL).hostname;}catch{throw Error('STAGING: supabaseUrl inválida');}
   const blocked=[PROD_HOST,...(cfg.productionHosts||[])];
-  if(host!==STAGING_HOST||blocked.includes(host)||KEY===PROD_KEY||/YOUR_STAGING/i.test(URL)||/YOUR_STAGING/i.test(KEY)){
+  if(host!==STAGING_HOST||blocked.includes(host)||KEY===PROD_KEY||/YOUR_STAGING/i.test(PROJECT_URL)||/YOUR_STAGING/i.test(KEY)){
    throw Error('STAGING bloqueado: solo está autorizado el Supabase DEMO independiente.');
   }
  }
@@ -175,7 +175,7 @@ const TankCloud=(()=>{
  async function init(){
   try{assertStagingIsolation();}catch(e){message=e.message;badge();render();return;}
   if(navigator.locks)navigator.locks.request('tanques-edit-session',{ifAvailable:true},async lock=>{editingTab=!!lock;badge();if(lock)await new Promise(()=>{});});
-  client=supabase.createClient(URL,KEY,{global:{fetch:async(input,options={})=>{const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);try{return await fetch(input,{...options,signal:controller.signal});}finally{clearTimeout(t);}}},auth:{storageKey:AUTH_KEY,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  client=supabase.createClient(PROJECT_URL,KEY,{global:{fetch:async(input,options={})=>{const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);try{return await fetch(input,{...options,signal:controller.signal});}finally{clearTimeout(t);}}},auth:{storageKey:AUTH_KEY,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const {data,error}=await client.auth.getSession();if(error)message=error.message;
   if(data?.session)try{await activate(data.session)}catch(e){message=e.message;badge();}
   client.auth.onAuthStateChange((event,session)=>{
