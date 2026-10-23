@@ -1,5 +1,6 @@
 -- Escenarios Fase A como rol authenticated (base aislada).
 -- Espera: stub + tanques-sync + tanques-validation + fase-a ya aplicados.
+-- Cubre revisión PR #2: sin INSERT directo, SIN_APERTURA, STOCK, CONFLICT.
 
 \set ON_ERROR_STOP on
 
@@ -22,14 +23,65 @@ insert into public.tanques_members(user_id,nombre,role,vehicle,active) values
  ('33333333-3333-4333-8333-333333333333','Reparto Test','reparto','camion',true)
 on conflict (user_id) do update set role=excluded.role, vehicle=excluded.vehicle, active=excluded.active;
 
--- Permisos de EXECUTE: authenticated puede llamar helpers (mínimo privilegio)
-select has_function_privilege('authenticated', 'tanques_private.round2(numeric)', 'EXECUTE') as round2_ok;
-select has_function_privilege('authenticated', 'tanques_private.stock_problems()', 'EXECUTE') as stock_ok;
-select has_function_privilege('anon', 'tanques_private.round2(numeric)', 'EXECUTE') as anon_round2_should_be_false;
+-- Permisos: RPC sí; helpers de stock no; tabla solo SELECT
+select public.test_assert(has_function_privilege('authenticated', 'public.tanques_sync_batch(jsonb)', 'EXECUTE'), 'authenticated EXECUTE sync_batch');
 select public.test_assert(has_function_privilege('authenticated', 'tanques_private.round2(numeric)', 'EXECUTE'), 'authenticated EXECUTE round2');
-select public.test_assert(has_function_privilege('authenticated', 'tanques_private.stock_problems()', 'EXECUTE'), 'authenticated EXECUTE stock_problems');
+select public.test_assert(not has_function_privilege('authenticated', 'tanques_private.stock_problems()', 'EXECUTE'), 'authenticated SIN EXECUTE stock_problems');
 select public.test_assert(not has_function_privilege('anon', 'tanques_private.round2(numeric)', 'EXECUTE'), 'anon NO EXECUTE round2');
-select public.test_assert(not has_function_privilege('anon', 'tanques_private.stock_problems()', 'EXECUTE'), 'anon NO EXECUTE stock_problems');
+select public.test_assert(not has_function_privilege('anon', 'public.tanques_sync_batch(jsonb)', 'EXECUTE'), 'anon NO EXECUTE sync_batch');
+select public.test_assert(has_table_privilege('authenticated', 'public.tanques_records', 'SELECT'), 'authenticated SELECT records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'INSERT'), 'authenticated SIN INSERT records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'UPDATE'), 'authenticated SIN UPDATE records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'DELETE'), 'authenticated SIN DELETE records');
+
+-- --- Bypass cerrado: INSERT directo rechazado ---
+set role authenticated;
+select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);
+do $$
+begin
+  begin
+    insert into public.tanques_records(key,kind,owner_id,vehicle,payload,deleted)
+    values(
+      'movement:bypass-1','movement','33333333-3333-4333-8333-333333333333','camion',
+      jsonb_build_object('id','bypass-1','type','DESCARGA','vehicle','camion','tank',1,'litres',1,'loss',0,'time','2026-10-21T07:00:00Z'),
+      false
+    );
+    raise exception 'ASSERT FAIL: INSERT directo debió fallar';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    raise notice 'OK INSERT directo denegado: %', SQLERRM;
+  end;
+end $$;
+
+-- --- Sin apertura Gerencia: movimiento vía RPC → STOCK / SIN_APERTURA ---
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:pre-open','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','pre-open','type','DESCARGA','vehicle','camion','tank',1,'litres',10,'loss',0,
+        'time','2026-10-21T07:30:00Z'
+      )
+    )));
+    raise exception 'ASSERT FAIL: sin opening debió STOCK';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%STOCK%' then raise exception 'ASSERT FAIL: esperado STOCK, got %', SQLERRM; end if;
+    if SQLERRM not like '%existencias iniciales%' and SQLERRM not like '%SIN_APERTURA%' then
+      raise exception 'ASSERT FAIL: esperado mensaje apertura, got %', SQLERRM;
+    end if;
+    raise notice 'OK SIN_APERTURA: %', SQLERRM;
+  end;
+end $$;
+
+reset role;
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:bypass-1')=0,
+  'bypass no persistido');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:pre-open')=0,
+  'pre-open no persistido');
 
 -- --- Gerencia: opening ---
 set role authenticated;
@@ -64,7 +116,6 @@ begin
     raise exception 'ASSERT FAIL: Almacén no debió poder escribir adjustment';
   exception when others then
     if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
-    -- esperado: new row violates row-level security / Usuario no autorizado / etc.
     raise notice 'OK rechazo adjustment Almacén: %', SQLERRM;
   end;
 end $$;

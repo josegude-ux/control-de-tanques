@@ -1,13 +1,18 @@
 -- FASE A — Seguridad e integridad de inventario (REVISIÓN; NO ejecutar aún en Supabase real)
 -- Proyecto: control-de-tanques
 -- Compatibilidad: requiere tablas/funciones de tanques-sync.sql (+ preferible tanques-validation.sql).
+--
+-- Incluye correcciones de revisión PR #2:
+--   1) Escrituras solo vía RPC (sin INSERT/UPDATE directo que eluda stock).
+--   2) Serialización de lotes de stock (pg_advisory_xact_lock) frente a concurrencia.
+--   3) Rechazo explícito de movimientos sin apertura/ajuste de Gerencia.
+--
 -- Efectos sobre datos existentes:
 --   * No borra filas ni auditoría.
 --   * Restringe quién puede escribir `adjustment` (solo gerencia).
---   * Rechaza lotes que dejen existencias inválidas (negativas / >capacidad).
 --   * Soft-delete de movement/visit solo permitido a gerencia.
---   * Inserts duplicados (misma key, base=0) → CONFLICT (sin doble contabilización).
--- Despliegue coordinado: aplicar ESTE SQL y el frontend de la rama fix/fase-a-seguridad-inventario juntos.
+--   * Inserts duplicados (misma key, base=0) → CONFLICT.
+-- Despliegue coordinado: este SQL + frontend 0.10.1 juntos.
 
 create or replace function tanques_private.can_write(k text, v text, p jsonb) returns boolean
 language sql stable security definer set search_path='' as $$
@@ -36,7 +41,6 @@ begin
  if TG_OP='UPDATE' then
   if new.key<>old.key or new.owner_id<>old.owner_id or new.kind<>old.kind then raise exception 'Identidad inmutable'; end if;
   if new.revision<>old.revision+1 then raise exception 'Revision incorrecta'; end if;
-  -- Soft-delete de movimientos/visitas: solo Gerencia (conservación de históricos).
   if new.deleted and not old.deleted and new.kind in ('movement','visit')
      and coalesce(tanques_private.member_role(),'')<>'gerencia' then
     raise exception 'Solo Gerencia puede anular movimientos o visitas sincronizados';
@@ -89,21 +93,27 @@ begin
  return new;
 end $$;
 
--- Proyecta existencias desde registros no borrados (misma regla que sync-core.balances).
+-- Proyecta existencias (misma regla que sync-core.balances).
+-- Si hay movimientos sin opening/ajuste → problema SIN_APERTURA.
 create or replace function tanques_private.stock_problems() returns text[]
-language plpgsql stable set search_path='' as $$
+language plpgsql stable security definer set search_path='' as $$
 declare
  opening jsonb; latest jsonb; base jsonb; adj_at text;
  m record; t int; qty numeric; loss numeric;
  cisterna numeric; camion numeric[]; furgoneta numeric[];
  problems text[] := array[]::text[];
+ has_mov boolean;
 begin
+ select exists(select 1 from public.tanques_records where kind='movement' and not deleted) into has_mov;
  select payload into opening from public.tanques_records
   where kind='opening' and not deleted order by key limit 1;
  select payload into latest from public.tanques_records
   where kind='adjustment' and not deleted order by payload->>'at' desc nulls last limit 1;
  base := coalesce(latest->'next', opening);
- if base is null then return problems; end if;
+ if base is null then
+  if has_mov then return array['SIN_APERTURA']; end if;
+  return problems;
+ end if;
  adj_at := latest->>'at';
  cisterna := case when base->>'cisterna' is null then null else tanques_private.round2((base->>'cisterna')::numeric) end;
  camion := array[
@@ -149,30 +159,54 @@ begin
  return problems;
 end $$;
 
+-- Única vía de escritura: RPC con auth, can_write, bloqueo de stock y validación final.
+-- SECURITY DEFINER: authenticated ya no tiene INSERT/UPDATE directo en la tabla.
 create or replace function public.tanques_sync_batch(changes jsonb)
 returns setof public.tanques_records
-language plpgsql security invoker set search_path='' as $$
-declare c jsonb; r public.tanques_records; n int; problems text[];
+language plpgsql security definer set search_path='' as $$
+declare
+ c jsonb; r public.tanques_records; existing public.tanques_records;
+ n int; problems text[]; uid uuid; role text; veh text;
 begin
- if auth.uid() is null or tanques_private.member_role() is null then
-   raise exception 'Usuario no autorizado';
- end if;
+ uid := auth.uid();
+ if uid is null then raise exception 'Usuario no autorizado'; end if;
+ role := tanques_private.member_role();
+ if role is null then raise exception 'Usuario no autorizado'; end if;
  if jsonb_typeof(changes)<>'array' or jsonb_array_length(changes)>500 then
    raise exception 'Lote inválido';
  end if;
 
+ -- Serializa lecturas/escrituras de inventario entre dispositivos concurrentes.
+ perform pg_advisory_xact_lock(881002301);
+
  for c in select value from jsonb_array_elements(changes) loop
+  if c->>'kind' is null or c->>'key' is null then raise exception 'Cambio inválido'; end if;
+  veh := nullif(c->>'vehicle','');
+  if not tanques_private.can_write(c->>'kind', veh, c->'payload') then
+    raise exception 'Permiso denegado: %', c->>'key';
+  end if;
+
   if (c->>'base')::int=0 then
    begin
-     insert into public.tanques_records(key,kind,vehicle,payload,deleted)
-     values(c->>'key',c->>'kind',c->>'vehicle',c->'payload',coalesce((c->>'deleted')::boolean,false))
-     returning * into r;
+     insert into public.tanques_records(key,kind,owner_id,vehicle,payload,deleted)
+     values(
+       c->>'key', c->>'kind', uid, veh, c->'payload',
+       coalesce((c->>'deleted')::boolean,false)
+     ) returning * into r;
    exception when unique_violation then
      raise exception 'CONFLICT: %', c->>'key';
    end;
   else
+   select * into existing from public.tanques_records where key=c->>'key' for update;
+   if not found then raise exception 'CONFLICT: %', c->>'key'; end if;
+   if existing.owner_id is distinct from uid and role is distinct from 'gerencia' then
+     raise exception 'Permiso denegado: %', c->>'key';
+   end if;
+   if not tanques_private.can_write(existing.kind, veh, c->'payload') then
+     raise exception 'Permiso denegado: %', c->>'key';
+   end if;
    update public.tanques_records
-     set payload=c->'payload', vehicle=c->>'vehicle',
+     set payload=c->'payload', vehicle=veh,
          deleted=coalesce((c->>'deleted')::boolean,false), revision=revision+1
      where key=c->>'key' and revision=(c->>'base')::int
      returning * into r;
@@ -184,6 +218,9 @@ begin
 
  problems := tanques_private.stock_problems();
  if coalesce(array_length(problems,1),0)>0 then
+   if problems @> array['SIN_APERTURA'] then
+     raise exception 'STOCK: faltan existencias iniciales de Gerencia (opening/ajuste).';
+   end if;
    raise exception 'STOCK: existencias inválidas tras el lote (%). Revise cargas/descargas o ajuste de Gerencia.',
      array_to_string(problems, ', ');
  end if;
@@ -192,11 +229,15 @@ end $$;
 revoke all on function public.tanques_sync_batch(jsonb) from public, anon;
 grant execute on function public.tanques_sync_batch(jsonb) to authenticated;
 
--- Mínimo privilegio: authenticated debe poder ejecutar helpers usados por
--- validate_record (trigger, SECURITY INVOKER) y tanques_sync_batch (SECURITY INVOKER).
--- Sin este GRANT, PostgREST/authenticated recibe "permission denied for function".
--- No se usa SECURITY DEFINER en round2/stock_problems: heredan RLS del invocador.
 revoke all on function tanques_private.round2(numeric) from public, anon;
-revoke all on function tanques_private.stock_problems() from public, anon;
+revoke all on function tanques_private.stock_problems() from public, anon, authenticated;
+-- stock_problems es SECURITY DEFINER (lee la tabla completa para proyectar saldo);
+-- authenticated no necesita EXECUTE directo; solo la RPC (también DEFINER) la invoca.
+-- round2: GRANT a authenticated por compatibilidad; el trigger corre bajo el definer de la RPC.
 grant execute on function tanques_private.round2(numeric) to authenticated;
-grant execute on function tanques_private.stock_problems() to authenticated;
+
+-- Cerrar el bypass: nada de INSERT/UPDATE/DELETE directo a la tabla para clientes.
+revoke insert, update, delete on public.tanques_records from authenticated;
+revoke insert, update, delete on public.tanques_records from anon;
+revoke insert, update, delete on public.tanques_records from public;
+grant select on public.tanques_records to authenticated;

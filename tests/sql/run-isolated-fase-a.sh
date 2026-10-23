@@ -23,5 +23,7 @@ echo "==> fase-a-seguridad-inventario.sql"
 run "$ROOT/database/fase-a-seguridad-inventario.sql"
 echo "==> escenarios authenticated"
 run "$ROOT/tests/sql/fase-a-scenarios.sql"
+echo "==> concurrencia dos descargas"
+bash "$ROOT/tests/sql/fase-a-concurrency.sh"
 
 echo "ISOLATED_SQL_PASS"
