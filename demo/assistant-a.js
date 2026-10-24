@@ -154,8 +154,13 @@
     const step = wizard.loadStep;
     screen.classList.add('assistant-a', 'assistant-form-screen');
     if (wizard.completedLoad) {
-      screen.prepend(newPanel('<div class="assistant-success" role="status">Carga guardada en este dispositivo. La sincronización automática se indica arriba.</div><button type="button" class="assistant-textbutton" data-guide="home">Volver al inicio</button>', 'assistant-confirmation'));
+      screen.innerHTML = '<section class="assistant-landing assistant-completed">' +
+       heading('CARGA COMPLETADA', 'Carga registrada', 'La operación está guardada en este dispositivo. Revisa arriba el estado de la sincronización.') +
+       '<div class="assistant-success" role="status">Registro guardado correctamente</div>' +
+       '<button type="button" class="assistant-primary" data-guide="home">Volver al inicio →</button>' +
+       '<button type="button" class="assistant-secondary" data-guide="more-load">Registrar otra carga</button></section>';
       wizard.completedLoad = false;
+      return;
     }
     screen.prepend(newPanel(heading('CARGA · ' + vehicleName(state.vehicle),
       ['Elige el destino', 'Indica los litros', 'Revisa y confirma'][step],
@@ -321,6 +326,7 @@
     const act = button.dataset.guide;
     if (act === 'start') { navigate(state.role === 'almacen' ? 'carga' : 'visita'); return; }
     if (act === 'home') { navigate('inicio'); return; }
+    if (act === 'more-load') { wizard.loadStep = 0; wizard.loadDraft = {}; render(); return; }
     if (act === 'next') { proceed(); return; }
     if (act === 'back') { back(); return; }
     if (act === 'planned' || act === 'extra') { wizard.visitMode = act === 'planned' ? 'plan' : 'extra'; render(); return; }
