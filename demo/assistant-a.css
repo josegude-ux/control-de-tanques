@@ -57,3 +57,5 @@
  .assistant-form-screen .card{padding:15px}
  .assistant-a .heading{font-size:20px}
 }
+.assistant-secondary{display:block;width:100%;border:1px solid #9db8aa;color:#185542;background:#fff;border-radius:16px;font-weight:800;padding:16px;font-size:16px;min-height:57px;margin-top:12px}
+.assistant-completed .assistant-primary{margin-top:16px}
