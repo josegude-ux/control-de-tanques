@@ -22,7 +22,7 @@ const CDTPlanImport=(()=>{
   const vehicle=dict['Vehículo'],week=dict['Semana'],version=Number(dict['Versión']);
   if(!['camion','furgoneta'].includes(vehicle)||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(week)||!Number.isSafeInteger(version)||version<1)throw Error('Datos de planificación incorrectos');
   function validDeliveryDate(date){
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return false;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return false;
    const monday=new Date(week+'T12:00:00Z'),delivery=new Date(date+'T12:00:00Z');
    if(!Number.isFinite(monday.getTime())||!Number.isFinite(delivery.getTime()))return false;
    if(monday.toISOString().slice(0,10)!==week||delivery.toISOString().slice(0,10)!==date||monday.getUTCDay()!==1)return false;
