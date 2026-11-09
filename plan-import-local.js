@@ -21,8 +21,16 @@ const CDTPlanImport=(()=>{
   if(meta[0]?.[0]!=='Semana'||meta[1]?.[0]!=='Vehículo'||data[0]?.join('|')!=='ID entrega|Fecha|Vehículo|Repartidor|Cliente|Población|Litros previstos|Dirección|Enlace Maps')throw Error('No es una planificación CDT compatible');
   const vehicle=dict['Vehículo'],week=dict['Semana'],version=Number(dict['Versión']);
   if(!['camion','furgoneta'].includes(vehicle)||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(week)||!Number.isSafeInteger(version)||version<1)throw Error('Datos de planificación incorrectos');
+  function validDeliveryDate(date){
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return false;
+   const monday=new Date(week+'T12:00:00Z'),delivery=new Date(date+'T12:00:00Z');
+   if(!Number.isFinite(monday.getTime())||!Number.isFinite(delivery.getTime()))return false;
+   if(monday.toISOString().slice(0,10)!==week||delivery.toISOString().slice(0,10)!==date||monday.getUTCDay()!==1)return false;
+   const delta=(delivery-monday)/86400000;
+   return Number.isInteger(delta)&&delta>=0&&delta<=4;
+  }
   const seen=new Set();const entries=data.slice(1).filter(r=>r.some(Boolean)).map(r=>{const [id,date,v,worker,client,town,amount,address,maps]=r;const liters=Number(amount);
-   if(!id||id.length>120||seen.has(id)||v!==vehicle||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)||!date.startsWith(week.slice(0,4))||!client||!Number.isFinite(liters)||liters<=0||liters>3000)throw Error('Una entrega contiene datos inválidos o duplicados');
+   if(!id||id.length>120||seen.has(id)||v!==vehicle||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)||!validDeliveryDate(date)||!client||!Number.isFinite(liters)||liters<=0||liters>3000)throw Error('Una entrega contiene datos inválidos o duplicados');
    seen.add(id);return {id,date,vehicle:v,worker,client,town,liters,address,maps};});
   if(!entries.length)throw Error('Planificación sin entregas');
   return {week,vehicle,version,entries};
