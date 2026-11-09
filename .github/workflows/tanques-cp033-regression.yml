@@ -1,0 +1,24 @@
+name: TANQUES LAB CP033 - regression
+on:
+  push:
+    branches:
+      - lab/visura-14-cp033-planificacion
+  workflow_dispatch:
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check app.js
+          node --check cloud-sync.js
+          node --check sync-core.js
+          node --check plan-import-local.js
+      - name: Unit and plan regression
+        run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js
