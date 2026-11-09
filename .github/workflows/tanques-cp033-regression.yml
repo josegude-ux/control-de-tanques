@@ -21,4 +21,4 @@ jobs:
           node --check sync-core.js
           node --check plan-import-local.js
       - name: Unit and plan regression
-        run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js
+        run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js tests/plan-flow.test.js
