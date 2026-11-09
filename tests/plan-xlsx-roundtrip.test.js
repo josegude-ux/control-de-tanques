@@ -1,7 +1,23 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.join(__dirname,'..'),read=n=>fs.readFileSync(path.join(root,n),'utf8');
-class FakeDOMParser{parseFromString(xml){const rowTags=[...xml.matchAll(/<row\\b[^>]*>([\\s\\S]*?)<\\/row>/g)].map(x=>x[1]);return {querySelector:()=>null,getElementsByTagName:tag=>tag==='row'?rowTags.map(r=>({getElementsByTagName:t=>t==='c'?[...r.matchAll(/<c\\b[^>]*>([\\s\\S]*?)<\\/c>/g)].map(c=>({getElementsByTagName:k=>{const m=c[1].match(new RegExp('<'+k+'(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/'+k+'>'));return m?[{textContent:m[1]}]:[]}})):[]})):[]}}}
+class FakeDOMParser {
+ parseFromString(xml) {
+  const rows=[...xml.matchAll(/<row[^>]*>(.*?)<\/row>/gs)].map(m=>m[1]);
+  return {
+   querySelector:()=>null,
+   getElementsByTagName:tag=>tag==='row'?rows.map(row=>({
+    getElementsByTagName:t=>t==='c'?[...row.matchAll(/<c[^>]*>(.*?)<\/c>/gs)].map(c=>({
+     getElementsByTagName:k=>{
+      const pattern=k==='t'?/<t[^>]*>(.*?)<\/t>/s:/<v[^>]*>(.*?)<\/v>/s;
+      const match=c[1].match(pattern);
+      return match?[{textContent:match[1]}]:[];
+     }
+    })):[]
+   })):[]
+  };
+ }
+}
 const context={TextEncoder,TextDecoder,Uint8Array,DataView,Blob,DOMParser:FakeDOMParser};vm.createContext(context);
 vm.runInContext(read('xlsx-local.js')+';globalThis.generate=SheetXLSX.generate',context);
 vm.runInContext(read('plan-import-local.js')+';globalThis.parse=CDTPlanImport.parse',context);
