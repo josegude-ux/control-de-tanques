@@ -1,8 +1,8 @@
 /* VISURA-14 CP030 · R5 LAB · Vista de solo lectura. Sin operaciones de inventario. */
 (()=>{'use strict';
-let view=null;
+let view=null;let cloud=null;const active=()=>!cloud?.connected?.()||Boolean(cloud?.member?.()?.active);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const authorized=s=>!(window.TankCloud?.connected?.()&&!window.TankCloud?.member?.()?.active);
+const authorized=s=>active();
 const customerList=s=>{
  if(s?.role!=='gerencia'||!authorized(s))return '';
  const rows=Array.isArray(s?.customers)?s.customers:[];
@@ -12,8 +12,8 @@ const customerList=s=>{
 const clients=s=>'<section class="v23" aria-label="Tanques de clientes"><button data-visura="back">← Volver al inicio</button><h2>Tanques de clientes</h2><p class="v23-note">Referencia visual; sin niveles reales de clientes.</p><img src="referencia-clientes.jpg" alt="Depósitos verticales de referencia; cifras no operativas">'+customerList(s)+(s?.role==='gerencia'&&authorized(s)?'<div class="v25-actions"><button data-page="clientes">Abrir clientes</button><button data-page="planificacion">Abrir planificación</button></div>':'')+'</section>';
 const loads=s=>{
  const values=s?.tanks?.[s.vehicle], problems=s?.cloudStockProblems||[];
- const demo=window.TankCloud?.canOperate?.()===false;
- const validated=Boolean(s?.cloudStockReady)&&!problems.length&&Boolean(window.TankCloud?.connected?.())&&Boolean(window.TankCloud?.member?.()?.active)&&!demo;
+ const demo=cloud?.canOperate?.()===false;
+ const validated=Boolean(s?.cloudStockReady)&&!problems.length&&Boolean(cloud?.connected?.())&&Boolean(cloud?.member?.()?.active)&&!demo;
  const preview=demo&&Boolean(s?.cloudStockReady)&&!problems.length;
  const good=v=>(validated||preview)&&typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1000;
  const all=Array.isArray(values)&&values.length&&values.every(good);
@@ -22,6 +22,7 @@ const loads=s=>{
  return '<section class="v23" aria-label="Nuestras cargas"><button data-visura="back">← Volver al inicio</button><h2>Nuestras cargas</h2><p class="v23-note">'+(demo?'LAB · DATOS FICTICIOS · NO SON EXISTENCIAS REALES':validated?'Lectura de existencias conectadas':'Saldos sin validar')+'</p><img src="referencia-cargas.jpg" alt="Depósito horizontal de referencia; cifras no operativas"><div class="v23-grid">'+items+'</div>'+total+'<div class="v25-actions">'+(['almacen','gerencia'].includes(s?.role)?'<button data-page="carga">Ir a carga</button>':'')+(['reparto','gerencia'].includes(s?.role)?'<button data-page="visita">Ir a descarga</button>':'')+'<button data-page="historial">Historial</button></div></section>';
 };
 window.VISURA_LAB_VISUAL={
+ bindCloud(c){cloud=c},
  render(s,detail){if(s?.page!=='inicio'||detail){view=null;return null;}return view==='clientes'?clients(s):view==='cargas'?loads(s):null},
  chooser(){return '<section class="v23 v23-chooser"><h2>VISURA PREPARA · TANQUES</h2><p class="v23-note">R5 LAB · Selector visual integrado</p><div class="v23-grid"><button data-visura="clientes"><img src="referencia-clientes.jpg" alt="Tanques verticales"><strong>Tanques de clientes</strong></button><button data-visura="cargas"><img src="referencia-cargas.jpg" alt="Depósito horizontal"><strong>Nuestras cargas</strong></button></div></section>'},
  reset(){view=null},
