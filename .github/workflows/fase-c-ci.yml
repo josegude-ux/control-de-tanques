@@ -6,9 +6,11 @@ on:
   push:
     branches:
       - fix/fase-c-sync-resilience
+      - feat/asistente-operativo-a
   pull_request:
     branches:
       - fix/fase-a-seguridad-inventario
+      - fix/fase-c-sync-resilience
   workflow_dispatch:
 
 permissions:
@@ -46,16 +48,21 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
+      - name: Seleccionar Chromium compatible de Playwright
+        run: echo "CHROMIUM_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
       - name: Bloquear salida directa a Supabase real y de demostración
         run: |
           echo '127.0.0.1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
           echo '::1 oevetnszmfxeukcncwji.supabase.co iuqmzpahyjganhppcsur.supabase.co' | sudo tee -a /etc/hosts
-      - name: Seleccionar Chromium local de Playwright
-        run: echo "CHROMIUM_PATH=$(node -e "process.stdout.write(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
       - name: Flujo completo offline, sin Supabase remoto
         run: npm run test:browser
       - name: Seguridad de roles e inventario en navegador
         run: npm run test:browser:fase-a
+      - name: Validación específica del asistente operativo A
+        run: |
+          node --check demo/assistant-a.js
+          node --check tests/browser-assistant-a.cjs
+          node tests/browser-assistant-a.cjs
 
   postgresql:
     name: PostgreSQL local - RLS, stock y concurrencia
