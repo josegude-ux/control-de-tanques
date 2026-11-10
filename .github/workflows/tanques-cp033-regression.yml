@@ -22,3 +22,9 @@ jobs:
           node --check plan-import-local.js
       - name: Unit and plan regression
         run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js tests/plan-flow.test.js tests/plan-xlsx-roundtrip.test.js
+      - name: Install isolated browser runner
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Browser integration - fictional data only
+        run: node tests/browser-plan.cjs
