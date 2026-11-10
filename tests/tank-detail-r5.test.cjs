@@ -52,6 +52,12 @@ test('unvalidated, conflicting and malformed stocks never show fabricated levels
   assert.match(html,/Sin datos validados/);
  }
 });
+test('reconciliation warning remains visible when detail balance is unavailable',()=>{
+ const h=harness();
+ const html=h.ctx.tankDetailR5([960],'camion',0,false,['conflict']);
+ assert.match(html,/Hay movimientos incompatibles con las existencias\. Gerencia debe revisar la conciliación antes de continuar\./);
+ assert.match(html,/Saldo no validado/);
+});
 test('valid values and different vehicles render consistent data',()=>{
  const h=harness();
  const a=h.ctx.tankDetailR5([960],'camion',0,true,[]);

@@ -126,6 +126,7 @@ function tankDetailR5(tanks,vehicle,index,ready,problems){
  '<button type="button" class="tank-r5-back" data-act="tank-r5-close" aria-label="Volver a tanques">← Volver a tanques</button>'+
  '<div class="tank-r5-hero"><div class="tank-r5-overline">VISURA PREPARA · TANQUES</div><div class="tank-r5-illustration" aria-hidden="true"><span class="tank-r5-vessel"></span></div><h2>Tanque '+(index+1)+'</h2><p>'+title+' · Vista de consulta</p></div>'+
  '<div class="tank-r5-facts"><div><span>Volumen actual</span><strong class="mono">'+(valid?fmt(value)+' L':'Sin datos validados')+'</strong></div><div><span>Capacidad nominal</span><strong class="mono">1.000 L</strong></div></div>'+
+ (Array.isArray(problems)&&problems.length?'<div class="notice error">Hay movimientos incompatibles con las existencias. Gerencia debe revisar la conciliación antes de continuar.</div>':'')+
  (valid?'<div class="tank-r5-level"><div class="row"><strong>Nivel de ocupación</strong><span>'+pct+' %</span></div><div class="tank-r41-meter" role="progressbar" aria-label="Ocupación del tanque '+(index+1)+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'"><span style="width:'+pct+'%"></span></div></div>':
  '<p class="tank-r41-unavailable" role="status">Saldo no validado. No se muestra porcentaje ni nivel.</p>')+
  '<p class="hint">Saldo con los movimientos recibidos y los pendientes de este móvil. Los de otros móviles sin conexión llegarán cuando se conecten.</p></section>';
