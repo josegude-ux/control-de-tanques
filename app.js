@@ -96,6 +96,23 @@ const card=(body)=>`<div class="card">${body}</div>`;
 const action=(text,act,secondary=false)=>`<button class="btn ${secondary?'secondary':''}" data-act="${act}">${text}</button>`;
 const roleNames={almacen:'Almacén',reparto:'Reparto',gerencia:'Gerencia'};
 function navbar(){el('roleButton').textContent=roleNames[state.role]+' ▾';document.querySelectorAll('[data-profile]').forEach(b=>{b.classList.toggle('selected',b.dataset.profile===state.role);b.setAttribute('aria-pressed',String(b.dataset.profile===state.role))});const allowed=state.role==='almacen'?['inicio','carga','historial','admin']:state.role==='reparto'?['inicio','visita','historial','recibir-plan','admin']:['inicio','carga','visita','historial','gerencia','clientes','planificacion','admin'];document.querySelectorAll('[data-page]').forEach(b=>{b.hidden=!allowed.includes(b.dataset.page);b.classList.toggle('active',b.dataset.page===state.page)})}
+// R4.1: vista exclusivamente presentacional; no modifica saldos, permisos ni persistencia.
+function tankListR41(tanks,vehicle,ready,problems){
+ const title=vehicle==='camion'?'Camión':'Furgoneta';
+ if(!Array.isArray(tanks)||!tanks.length)return '<section class="card tank-r41-list" aria-label="Existencias del vehículo"><h3>Tanques del '+title+'</h3><p class="muted">No hay existencias disponibles para este vehículo.</p></section>';
+ const reliable=Boolean(ready)&&!problems.length;
+ const rows=tanks.map((value,index)=>{
+  const valid=reliable&&typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1000;
+  const pct=valid?Math.round(value/1000*100):null;
+  return '<article class="tank-r41-item" aria-label="Tanque '+(index+1)+'">'+
+   '<div class="tank-r41-heading"><span class="tank-r41-symbol" aria-hidden="true">▣</span><div><strong>Tanque '+(index+1)+'</strong><small>'+title+' · Existencias</small></div></div>'+
+   (valid?'<div class="tank-r41-values"><strong class="mono">'+fmt(value)+' L</strong><span>de 1.000 L</span></div><div class="tank-r41-meter" role="progressbar" aria-label="Ocupación del tanque '+(index+1)+'" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+pct+'"><span style="width:'+pct+'%"></span></div><p class="tank-r41-caption">'+pct+' % de capacidad</p>':
+   '<p class="tank-r41-unavailable">Saldo no validado · Sin porcentaje disponible</p>')+
+   '</article>';
+ }).join('');
+ const total=reliable&&tanks.every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1000)?'<div class="tank-r41-total"><span>Total disponible</span><strong class="mono">'+fmt(tanks.reduce((a,b)=>a+b,0))+' L</strong></div>':'';
+ return '<section class="tank-r41-list" aria-label="Existencias del vehículo"><h3>Tanques del '+title+'</h3>'+rows+total+'<p class="hint">Saldo con los movimientos recibidos y los pendientes de este móvil. Los de otros móviles sin conexión llegarán cuando se conecten.</p></section>';
+}
 function home(){
  if(!TankCloud.connected())return '<div class="card"><h3>Conectar Control de Tanques</h3><p>Activa la sincronización con tu cuenta. Los datos de prueba anteriores se conservan en este dispositivo.</p><button class="btn" data-cloud="settings">Conectar cuenta</button></div>'+legacyHome();
  if(!TankCloud.member()?.active)return TankCloud.panel();
@@ -105,7 +122,7 @@ function home(){
  (problems.length?'<div class="notice error">Hay movimientos incompatibles con las existencias. Gerencia debe revisar la conciliación antes de continuar.</div>':'')+
  (state.role!=='reparto'?card('<h3>Cisterna principal</h3><strong class="big">'+fmt(state.cisterna)+' L</strong>'):'')+
  `<label class="field">Vehículo<select id="vehicle"><option value="camion" ${state.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${state.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select></label>`+
- card('<h3>Existencias del vehículo</h3>'+tanks.map((n,i)=>`<div class="row"><b>Tanque ${i+1}</b><strong>${fmt(n)} / 1.000 L</strong></div>`).join('')+`<p>Total: <strong>${fmt(tanks.reduce((a,b)=>a+b,0))} L</strong></p><p class="hint">Saldo con los movimientos recibidos y los pendientes de este móvil. Los de otros móviles sin conexión llegarán cuando se conecten.</p>`)+
+ tankListR41(tanks,state.vehicle,state.cloudStockReady,problems)+
  (state.role==='almacen'?action('Nueva carga','go-carga'):state.role==='reparto'?action(state.openVisit?'Continuar descarga':'Nueva descarga','go-visita'):card(action('Saldos y movimientos','go-gerencia')+action('Clientes','go-clientes')+action('Planificación','go-planificacion')));
 }
 function legacyHome(){const tanks=state.tanks[state.vehicle];let txt=`<div class="home-logo-preview"><img src="logo-control-tanques.png" alt="Control de Tanques Mahou" loading="eager"></div><h2 class="heading">${state.role==='almacen'?'Almacén':state.role==='reparto'?'Mi vehículo':'Panel de pruebas'}</h2><div class="notice">Datos ficticios guardados localmente por perfil. Cada perfil usa su propio registro; NO existe autenticación real.</div>`;
