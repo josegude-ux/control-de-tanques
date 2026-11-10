@@ -7,7 +7,7 @@ const source=fs.readFileSync('app.js','utf8');
 const start=source.indexOf('function tankListR41(');
 const end=source.indexOf('// R5 LAB:',start)>0?source.indexOf('// R5 LAB:',start):source.indexOf('function home()',start);
 assert.ok(start>=0&&end>start,'R4.1 renderer exists');
-const ctx={fmt:n=>Number(n).toLocaleString('es-ES',{maximumFractionDigits:2})};
+const ctx={window:{addEventListener(){}},document:{},fmt:n=>Number(n).toLocaleString('es-ES',{maximumFractionDigits:2})};
 vm.runInNewContext(source.slice(start,end),ctx);
 test('validated values render precise liters and percentage',()=>{
  const html=ctx.tankListR41([960,0], 'camion', true, []);
