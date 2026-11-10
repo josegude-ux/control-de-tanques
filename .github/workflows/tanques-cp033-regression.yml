@@ -30,4 +30,6 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.58.2
           npx playwright install --with-deps chromium
       - name: Browser integration - fictional data only
-        run: node tests/browser-plan.cjs
+        run: |
+          node tests/browser-plan.cjs
+          node tests/browser-tank-r5.cjs
