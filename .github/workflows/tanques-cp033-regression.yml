@@ -4,6 +4,7 @@ on:
     branches:
       - lab/visura-14-cp033-planificacion
       - lab/visura-14-cp033-copilot
+      - lab/visura-14-r41-listado-movil
   workflow_dispatch:
 jobs:
   regression:
@@ -22,7 +23,7 @@ jobs:
           node --check sync-core.js
           node --check plan-import-local.js
       - name: Unit and plan regression
-        run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js tests/plan-flow.test.js tests/plan-xlsx-roundtrip.test.js
+        run: node --test tests/sync-core.test.js tests/plan-week-dates.test.js tests/plan-flow.test.js tests/plan-xlsx-roundtrip.test.js tests/tank-list-r41.test.cjs
       - name: Install isolated browser runner
         run: |
           npm install --no-save --no-package-lock playwright@1.58.2
