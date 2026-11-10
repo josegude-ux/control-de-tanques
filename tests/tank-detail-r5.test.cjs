@@ -16,33 +16,33 @@ function harness(){
  const window={get scrollY(){return scroll},scrollTo(_x,y){scroll=y},addEventListener(name,cb){if(name==='popstate')popstate=cb}};
  const ctx={state,TankCloud:{connected:()=>true,member:()=>({active:true})},history,window,requestAnimationFrame:cb=>cb(),fmt:n=>String(n),render:()=>{renderCount++}};
  vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
- return {ctx,state,initial,history,window,get renderCount(){return renderCount},get writeCount(){return writeCount},get backCount(){return backCount},pop:()=>popstate()};
+ return {ctx,state,initial,history,window,get selection(){return vm.runInContext('tankDetailSelectionR5',ctx)},get renderCount(){return renderCount},get writeCount(){return writeCount},get backCount(){return backCount},pop:()=>popstate()};
 }
 test('open and browser Back are reversible without persisted selection or state writes',()=>{
  const h=harness();
  h.ctx.tankR5Open(0);
- assert.equal(h.ctx.tankDetailSelectionR5.index,0);
+ assert.equal(h.selection.index,0);
  assert.equal(h.history.state.visuraTankR5,true);
  assert.equal(h.window.scrollY,0);
  h.ctx.tankR5Back();
- assert.equal(h.ctx.tankDetailSelectionR5,null);
+ assert.equal(h.selection,null);
  assert.equal(h.window.scrollY,175);
  assert.equal(h.backCount,1);
  assert.deepEqual(h.state,h.initial);
  assert.equal(h.writeCount,0);
 });
 test('invalid index and inactive role cannot open a tank',()=>{
- const h=harness();h.ctx.tankR5Open(99);assert.equal(h.ctx.tankDetailSelectionR5,null);
- h.state.page='carga';h.ctx.tankR5Open(0);assert.equal(h.ctx.tankDetailSelectionR5,null);
+ const h=harness();h.ctx.tankR5Open(99);assert.equal(h.selection,null);
+ h.state.page='carga';h.ctx.tankR5Open(0);assert.equal(h.selection,null);
 });
 test('vehicle and role change close ephemeral detail without mutating stocks',()=>{
  const h=harness();h.ctx.tankR5Open(0);
  h.state.vehicle='furgoneta';h.ctx.tankR5Close(false);
- assert.equal(h.ctx.tankDetailSelectionR5,null);
+ assert.equal(h.selection,null);
  assert.equal(h.history.state.visuraTankR5,false);
  assert.deepEqual(h.state.tanks,h.initial.tanks);
  h.state.vehicle='camion';h.ctx.tankR5Open(1);h.state.role='reparto';h.ctx.tankR5Close(false);
- assert.equal(h.ctx.tankDetailSelectionR5,null);
+ assert.equal(h.selection,null);
 });
 test('unvalidated, conflicting and malformed stocks never show fabricated levels',()=>{
  const h=harness();
@@ -63,5 +63,5 @@ test('selection is transient and resets on reload simulation',()=>{
  const h=harness();h.ctx.tankR5Open(0);
  assert.equal(Object.hasOwn(h.state,'tankDetailSelectionR5'),false);
  const other=harness();
- assert.equal(other.ctx.tankDetailSelectionR5,null);
+ assert.equal(other.selection,null);
 });
