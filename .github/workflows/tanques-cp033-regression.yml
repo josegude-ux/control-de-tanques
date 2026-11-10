@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - lab/visura-14-cp033-planificacion
+      - lab/visura-14-cp033-copilot
   workflow_dispatch:
 jobs:
   regression:
