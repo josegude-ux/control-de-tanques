@@ -1,6 +1,6 @@
-// Cache del shell; no borrar nunca IndexedDB ni datos de usuario.
-const CACHE='control-tanques-demo-v0100-autosync';
-const FILES=['./supabase-2.57.4.js','./sync-core.js?v=0.10.0','./cloud-sync.js?v=0.10.0','./','./index.html','./styles.css?v=0.10.0','./app.js?v=0.10.0','./xlsx-local.js?v=0.10.0','./xlsx-import-local.js?v=0.10.0','./xlsx-transfer-local.js?v=0.10.0','./plan-import-local.js?v=0.10.0','./manifest.webmanifest?v=0.10.0','./icon.svg','./mahou-logo.png','./logo-control-tanques.png','./Control_de_Tanques_icon_192.png','./Control_de_Tanques_icon_512.png','./version.json'];
+// Cache del shell únicamente. Nunca abre IndexedDB ni borra datos de usuario.
+const CACHE='control-tanques-demo-v0101-fase-a';
+const FILES=['./supabase-2.57.4.js','./sync-core.js?v=0.10.1','./cloud-sync.js?v=0.10.1','./','./index.html','./styles.css?v=0.10.1','./app.js?v=0.10.1','./xlsx-local.js?v=0.10.1','./xlsx-import-local.js?v=0.10.1','./xlsx-transfer-local.js?v=0.10.1','./plan-import-local.js?v=0.10.1','./manifest.webmanifest?v=0.10.1','./icon.svg','./mahou-logo.png','./logo-control-tanques.png','./Control_de_Tanques_icon_192.png','./Control_de_Tanques_icon_512.png','./version.json'];
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(CACHE);await Promise.all(FILES.map(async file=>{const request=new Request(file,{cache:'reload'});const response=await fetch(request);if(!response.ok)throw new Error('No se pudo preparar '+file);await c.put(request,response)}));await self.skipWaiting()})())});
 self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('control-tanques-demo-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

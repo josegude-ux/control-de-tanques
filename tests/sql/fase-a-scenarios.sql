@@ -1,0 +1,255 @@
+-- Escenarios Fase A como rol authenticated (base aislada).
+-- Espera: stub + tanques-sync + tanques-validation + fase-a ya aplicados.
+-- Cubre revisión PR #2: sin INSERT directo, SIN_APERTURA, STOCK, CONFLICT.
+
+\set ON_ERROR_STOP on
+
+create or replace function public.test_assert(cond boolean, msg text) returns void
+language plpgsql as $$
+begin
+  if not cond then raise exception 'ASSERT FAIL: %', msg; end if;
+end $$;
+
+-- Usuarios de prueba
+insert into auth.users(id,email) values
+ ('11111111-1111-4111-8111-111111111111','gerencia@test.local'),
+ ('22222222-2222-4222-8222-222222222222','almacen@test.local'),
+ ('33333333-3333-4333-8333-333333333333','reparto@test.local')
+on conflict do nothing;
+
+insert into public.tanques_members(user_id,nombre,role,vehicle,active) values
+ ('11111111-1111-4111-8111-111111111111','Gerencia Test','gerencia',null,true),
+ ('22222222-2222-4222-8222-222222222222','Almacen Test','almacen',null,true),
+ ('33333333-3333-4333-8333-333333333333','Reparto Test','reparto','camion',true)
+on conflict (user_id) do update set role=excluded.role, vehicle=excluded.vehicle, active=excluded.active;
+
+-- Permisos: RPC sí; helpers de stock no; tabla solo SELECT
+select public.test_assert(has_function_privilege('authenticated', 'public.tanques_sync_batch(jsonb)', 'EXECUTE'), 'authenticated EXECUTE sync_batch');
+select public.test_assert(has_function_privilege('authenticated', 'tanques_private.round2(numeric)', 'EXECUTE'), 'authenticated EXECUTE round2');
+select public.test_assert(not has_function_privilege('authenticated', 'tanques_private.stock_problems()', 'EXECUTE'), 'authenticated SIN EXECUTE stock_problems');
+select public.test_assert(not has_function_privilege('anon', 'tanques_private.round2(numeric)', 'EXECUTE'), 'anon NO EXECUTE round2');
+select public.test_assert(not has_function_privilege('anon', 'public.tanques_sync_batch(jsonb)', 'EXECUTE'), 'anon NO EXECUTE sync_batch');
+select public.test_assert(has_table_privilege('authenticated', 'public.tanques_records', 'SELECT'), 'authenticated SELECT records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'INSERT'), 'authenticated SIN INSERT records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'UPDATE'), 'authenticated SIN UPDATE records');
+select public.test_assert(not has_table_privilege('authenticated', 'public.tanques_records', 'DELETE'), 'authenticated SIN DELETE records');
+
+-- --- Bypass cerrado: INSERT directo rechazado ---
+set role authenticated;
+select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);
+do $$
+begin
+  begin
+    insert into public.tanques_records(key,kind,owner_id,vehicle,payload,deleted)
+    values(
+      'movement:bypass-1','movement','33333333-3333-4333-8333-333333333333','camion',
+      jsonb_build_object('id','bypass-1','type','DESCARGA','vehicle','camion','tank',1,'litres',1,'loss',0,'time','2026-10-21T07:00:00Z'),
+      false
+    );
+    raise exception 'ASSERT FAIL: INSERT directo debió fallar';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    raise notice 'OK INSERT directo denegado: %', SQLERRM;
+  end;
+end $$;
+
+-- --- Sin apertura Gerencia: movimiento vía RPC → STOCK / SIN_APERTURA ---
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:pre-open','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','pre-open','type','DESCARGA','vehicle','camion','tank',1,'litres',10,'loss',0,
+        'time','2026-10-21T07:30:00Z'
+      )
+    )));
+    raise exception 'ASSERT FAIL: sin opening debió STOCK';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%STOCK%' then raise exception 'ASSERT FAIL: esperado STOCK, got %', SQLERRM; end if;
+    if SQLERRM not like '%existencias iniciales%' and SQLERRM not like '%SIN_APERTURA%' then
+      raise exception 'ASSERT FAIL: esperado mensaje apertura, got %', SQLERRM;
+    end if;
+    raise notice 'OK SIN_APERTURA: %', SQLERRM;
+  end;
+end $$;
+
+reset role;
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:bypass-1')=0,
+  'bypass no persistido');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:pre-open')=0,
+  'pre-open no persistido');
+
+-- --- Gerencia: opening ---
+set role authenticated;
+select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
+
+select * from public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+  'key','opening:global','kind','opening','vehicle',null,'base',0,'deleted',false,
+  'payload', jsonb_build_object('cisterna',23000,'camion',jsonb_build_array(977,413.57,0),'furgoneta',jsonb_build_array(990))
+)));
+
+-- --- Almacén: carga válida (T1=977 → cabe 23 L sin merma; usamos 20 L) ---
+select set_config('app.uid','22222222-2222-4222-8222-222222222222', false);
+select * from public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+  'key','movement:carga-1','kind','movement','vehicle','camion','base',0,'deleted',false,
+  'payload', jsonb_build_object(
+    'id','carga-1','type','CARGA','vehicle','camion','tank',1,'litres',20,'loss',0,
+    'time','2026-10-21T08:00:00Z'
+  )
+)));
+
+-- --- Almacén: ajuste RECHAZADO (solo gerencia) ---
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','adjustment:hack','kind','adjustment','vehicle',null,'base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','hack','at','2026-10-21T09:00:00Z','reason','no',
+        'next', jsonb_build_object('cisterna',1,'camion',jsonb_build_array(1,1,1),'furgoneta',jsonb_build_array(1))
+      )
+    )));
+    raise exception 'ASSERT FAIL: Almacén no debió poder escribir adjustment';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    raise notice 'OK rechazo adjustment Almacén: %', SQLERRM;
+  end;
+end $$;
+
+-- --- Gerencia: ajuste autorizado (saldos dentro de 0–1000) ---
+select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
+select * from public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+  'key','adjustment:adj-1','kind','adjustment','vehicle',null,'base',0,'deleted',false,
+  'payload', jsonb_build_object(
+    'id','adj-1','at','2026-10-21T09:30:00Z','reason','Conciliación Gerencia',
+    'next', jsonb_build_object('cisterna',22980,'camion',jsonb_build_array(500,400,0),'furgoneta',jsonb_build_array(990))
+  )
+)));
+
+-- --- Reparto: descarga válida (después del ajuste: T1=500) ---
+select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);
+select * from public.tanques_sync_batch(jsonb_build_array(
+  jsonb_build_object(
+    'key','visit:v1','kind','visit','vehicle','camion','base',0,'deleted',false,
+    'payload', jsonb_build_object('id','v1','vehicle','camion','client','Bar','started','2026-10-21T10:00:00Z','ended','2026-10-21T10:10:00Z',
+      'discharges', jsonb_build_array(jsonb_build_object('id','d1','source',0,'dest','1','reading',40,'liters',40,'at','2026-10-21T10:05:00Z')))
+  ),
+  jsonb_build_object(
+    'key','movement:d1','kind','movement','vehicle','camion','base',0,'deleted',false,
+    'payload', jsonb_build_object(
+      'id','d1','type','DESCARGA','vehicle','camion','tank',1,'litres',40,'loss',0,
+      'time','2026-10-21T10:05:00Z','client','Bar','dest','1','visitId','v1'
+    )
+  )
+));
+
+-- --- Duplicado: mismo movement key base=0 → CONFLICT ---
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:d1','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','d1','type','DESCARGA','vehicle','camion','tank',1,'litres',40,'loss',0,
+        'time','2026-10-21T10:05:00Z','visitId','v1'
+      )
+    )));
+    raise exception 'ASSERT FAIL: duplicado debió CONFLICT';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%CONFLICT%' then raise exception 'ASSERT FAIL: esperado CONFLICT, got %', SQLERRM; end if;
+    raise notice 'OK duplicado CONFLICT: %', SQLERRM;
+  end;
+end $$;
+
+-- --- Existencias insuficientes: vaciar T3 (0 L) ---
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:d-over','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','d-over','type','DESCARGA','vehicle','camion','tank',3,'litres',1,'loss',0,
+        'time','2026-10-21T11:00:00Z'
+      )
+    )));
+    raise exception 'ASSERT FAIL: STOCK debió rechazar descarga en tanque vacío';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%STOCK%' then raise exception 'ASSERT FAIL: esperado STOCK, got %', SQLERRM; end if;
+    raise notice 'OK existencias insuficientes STOCK: %', SQLERRM;
+  end;
+end $$;
+
+-- --- Soft-delete de movement prohibido (no restaurar saldo) ---
+set role authenticated;
+select set_config('app.uid','11111111-1111-4111-8111-111111111111', false);
+do $$
+declare rev int;
+begin
+  select revision into rev from public.tanques_records where key='movement:d1';
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:d1','kind','movement','vehicle','camion','base',rev,'deleted',true,
+      'payload', (select payload from public.tanques_records where key='movement:d1')
+    )));
+    raise exception 'ASSERT FAIL: soft-delete movement debió rechazarse';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    if SQLERRM not like '%borrar un movimiento%' and SQLERRM not like '%ajuste%' then
+      raise exception 'ASSERT FAIL: esperado rechazo soft-delete movement, got %', SQLERRM;
+    end if;
+    raise notice 'OK soft-delete movement rechazado: %', SQLERRM;
+  end;
+end $$;
+
+-- --- tank ausente / null → Movimiento inválido (no default tanque 1) ---
+select set_config('app.uid','33333333-3333-4333-8333-333333333333', false);
+do $$
+begin
+  begin
+    perform public.tanques_sync_batch(jsonb_build_array(jsonb_build_object(
+      'key','movement:no-tank','kind','movement','vehicle','camion','base',0,'deleted',false,
+      'payload', jsonb_build_object(
+        'id','no-tank','type','DESCARGA','vehicle','camion','litres',1,'loss',0,
+        'time','2026-10-21T11:30:00Z'
+      )
+    )));
+    raise exception 'ASSERT FAIL: movement sin tank debió rechazarse';
+  exception when others then
+    if SQLERRM like 'ASSERT FAIL:%' then raise; end if;
+    raise notice 'OK movement sin tank rechazado: %', SQLERRM;
+  end;
+end $$;
+
+reset role;
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:carga-1' and not deleted)=1,
+  'carga persistida');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:d1' and not deleted)=1,
+  'descarga persistida');
+select public.test_assert(
+  (select deleted from public.tanques_records where key='movement:d1')=false,
+  'movement d1 no soft-deleted');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='adjustment:adj-1' and not deleted)=1,
+  'ajuste gerencia persistido');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='adjustment:hack')=0,
+  'ajuste almacén no persistido');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:d-over')=0,
+  'descarga insuficiente no persistida');
+select public.test_assert(
+  (select count(*) from public.tanques_records where key='movement:no-tank')=0,
+  'movement sin tank no persistido');
+select public.test_assert(
+  (select count(*) from public.tanques_audit)>=3,
+  'auditoría tiene entradas');
+
+\echo 'FASE_A_SQL_SCENARIOS_PASS'

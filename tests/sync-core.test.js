@@ -22,6 +22,33 @@ test('deleted visit produces tombstones for visit and discharges',()=>{
 test('other device receives plans and account history remains isolated',()=>{
  const m=C.empty();C.receive(m,[opening,{key:'visit:v1',kind:'visit',owner_id:'other',payload:visit,revision:1},{key:'plan:2026-10-19',kind:'plan',payload:{entries:[{id:'p1',vehicle:'camion'}]},revision:1}]);const s={role:'reparto'};C.hydrate(m,s,'me');assert.equal(s.openVisit,null);assert.equal(s.receivedPlans['2026-10-19|camion'].entries.length,1);assert.equal(s.receivedPlans['2026-10-19|furgoneta'].entries.length,0);
 });
+test('gerencia splits weekly plan into per-vehicle sync rows',()=>{
+ const m=C.empty();
+ const week='2026-10-19';
+ const weekly={entries:[
+  {id:'e1',vehicle:'camion',customerName:'Bar',liters:40},
+  {id:'e2',vehicle:'furgoneta',customerName:'Bar2',liters:20}
+ ],sent:{camion:{version:1}}};
+ C.capture(m,{role:'gerencia',customers:[],weeklyPlans:{[week]:weekly},manager:{},stockAdjustmentHistory:[]},'boss');
+ assert.ok(m.pending['plan:2026-10-19|camion']);
+ assert.ok(m.pending['plan:2026-10-19|furgoneta']);
+ assert.equal(m.pending['plan:2026-10-19'],undefined);
+ assert.equal(m.pending['plan:2026-10-19|camion'].vehicle,'camion');
+ assert.equal(m.pending['plan:2026-10-19|camion'].payload.entries.length,1);
+ assert.equal(m.pending['plan:2026-10-19|furgoneta'].payload.entries.length,1);
+ assert.equal(m.pending['plan:2026-10-19|camion'].payload.entries[0].id,'e1');
+});
+test('hydrate merges per-vehicle plans for gerencia full view',()=>{
+ const m=C.empty();
+ C.receive(m,[
+  {key:'plan:2026-10-19|camion',kind:'plan',vehicle:'camion',revision:1,payload:{week:'2026-10-19',vehicle:'camion',entries:[{id:'e1',vehicle:'camion'}],sent:{}}},
+  {key:'plan:2026-10-19|furgoneta',kind:'plan',vehicle:'furgoneta',revision:1,payload:{week:'2026-10-19',vehicle:'furgoneta',entries:[{id:'e2',vehicle:'furgoneta'}],sent:{}}}
+ ]);
+ const s={role:'gerencia'};C.hydrate(m,s,'boss');
+ assert.equal(s.weeklyPlans['2026-10-19'].entries.length,2);
+ assert.equal(s.receivedPlans['2026-10-19|camion'].entries.length,1);
+ assert.equal(s.receivedPlans['2026-10-19|furgoneta'].entries.length,1);
+});
 test('unknown opening blocks stocks; excessive shared withdrawals raise review',()=>{
  const m=C.empty();assert.equal(C.balances(m).ready,false);C.receive(m,[opening]);C.capture(m,{role:'reparto',visits:[],openVisit:{...visit,discharges:[{...visit.discharges[0],liters:600}]}},'u');assert.equal(C.balances(m).problems.length,1);
 });
