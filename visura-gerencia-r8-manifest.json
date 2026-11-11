@@ -1,0 +1,18 @@
+{
+  "module": "VISURA PREPARA TANQUES · 14",
+  "variant": "Gerencia · R8",
+  "checkpoint": "VISURA-14-CP-GERENCIA-IMAGENES-R8-20261111-001",
+  "visual_commit": "5384f720613faacc63c0ac86a3dce355360170b4",
+  "artwork": "approved_three_dimensional_scenes",
+  "view_modes": [
+    "visual",
+    "simplificada"
+  ],
+  "assets": [
+    "assets/gerencia-r8-cisterna.jpg",
+    "assets/gerencia-r8-camion.jpg",
+    "assets/gerencia-r8-furgoneta.jpg",
+    "assets/voldis-logo-autorizado-r8.jpeg"
+  ],
+  "disclaimer": "Visual only: no changes to business logic, authentication, data or synchronization"
+}
