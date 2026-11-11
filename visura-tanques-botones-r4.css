@@ -10,3 +10,8 @@
  .v23-chooser.visura-r4-banners .v23-grid>button{border-radius:15px}
  .v23-chooser.visura-r4-banners .v23-grid>button>strong{display:block;font-size:1rem;color:#0B2647;font-weight:800;padding:9px 13px;line-height:1.2}
 }
+
+/* VISURA TANQUES R4.1 · limpieza visual del selector, sin afectar a operaciones o inventarios */
+.v23-chooser.visura-r4-banners > .v23-note{display:none}
+.v23-chooser.visura-r4-banners .v23-grid>button>strong{display:none}
+#screen > .v23-chooser.visura-r4-banners ~ .home-logo-preview{display:none}
