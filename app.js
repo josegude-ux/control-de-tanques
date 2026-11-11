@@ -100,7 +100,7 @@ const action=(text,act,secondary=false)=>`<button class="btn ${secondary?'second
 const roleNames={almacen:'Almacén',reparto:'Reparto',gerencia:'Gerencia'};
 function navbar(){el('roleButton').textContent=roleNames[state.role]+' ▾';document.querySelectorAll('[data-profile]').forEach(b=>{b.classList.toggle('selected',b.dataset.profile===state.role);b.setAttribute('aria-pressed',String(b.dataset.profile===state.role))});const allowed=state.role==='almacen'?['inicio','carga','historial','admin']:state.role==='reparto'?['inicio','visita','historial','recibir-plan','admin']:['inicio','carga','visita','historial','gerencia','clientes','planificacion','admin'];document.querySelectorAll('[data-page]').forEach(b=>{b.hidden=!allowed.includes(b.dataset.page);b.classList.toggle('active',b.dataset.page===state.page)})}
 function home(){
- if(!TankCloud.connected())return '<div class="card"><h3>Conectar Control de Tanques</h3><p>Activa la sincronización con tu cuenta. Los datos de prueba anteriores se conservan en este dispositivo.</p><button class="btn" data-cloud="settings">Conectar cuenta</button></div>'+legacyHome();
+ if(!TankCloud.connected())return '<section class="visura-demo-panel" aria-label="Datos de demostración"><div class="visura-demo-heading"><span>DATOS DE DEMOSTRACIÓN</span><small>Sin sesión conectada · saldos ficticios que permanecen en este dispositivo</small></div>'+legacyHome()+'</section>';
  if(!TankCloud.member()?.active)return TankCloud.panel();
  const tanks=state.tanks[state.vehicle],problems=state.cloudStockProblems||[];
  return '<div class="home-logo-preview"><img src="logo-control-tanques.png" alt="Control de Tanques Mahou"></div>'+`<h2 class="heading">${roleNames[state.role].replace(' (vista de prueba)','')}</h2>`+
