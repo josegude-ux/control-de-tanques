@@ -1,0 +1,43 @@
+/* VISURA-14 · R6.1. Solo apariencia de las vistas interiores. No se alteran las imágenes aprobadas. */
+#screen .visura-r61-figure{
+ margin:0 auto 18px;max-width:1120px;min-width:0;overflow:hidden;
+ background:#fff;border:1px solid #dbe5ef;border-radius:17px;
+ box-shadow:0 7px 24px rgba(11,38,71,.09);
+}
+#screen .visura-r61-mobile-heading{display:none}
+#screen .visura-r61-clip{display:block;overflow:hidden;position:relative;background:#071f3b}
+#screen .visura-r61-figure img{
+ display:block;width:100%;height:auto;max-height:none!important;aspect-ratio:3 / 1;
+ object-fit:contain;object-position:center;border-radius:0!important;
+}
+#screen .visura-r61-caption{
+ background:#f8fafc;color:#536781;font-size:12px;line-height:1.45;
+ padding:8px 15px;border-top:1px solid #e3eaf3;
+}
+/* Reemplaza solo la pseudoimagen inaccesible de R6 cuando existe la imagen semántica R6.1. */
+#screen:has(> .visura-r61-figure)::before{content:none!important;display:none!important}
+#screen .v23.visura-interior-r6 .visura-r61-figure{margin:14px 0;border-radius:14px}
+/* Garantizar que el texto de referencia no simule estado conectado ni progreso. */
+#screen .visura-r61-figure .visura-r61-clip, #screen .visura-r61-figure img{pointer-events:none}
+@media(max-width:670px){
+ #screen .visura-r61-figure{border-radius:14px;margin-bottom:16px}
+ #screen .visura-r61-mobile-heading{
+  display:flex;flex-direction:column;gap:4px;padding:11px 14px;
+  color:#fff;background:linear-gradient(115deg,#0b2647,#0b5b90);
+ }
+ #screen .visura-r61-figure[data-kind="descargas"] .visura-r61-mobile-heading{background:linear-gradient(115deg,#ae102c,#db2844)}
+ #screen .visura-r61-mobile-heading strong{font-size:19px;line-height:1.25;font-weight:850}
+ #screen .visura-r61-mobile-heading span{font-size:13px;line-height:1.35;max-width:40ch}
+ #screen .visura-r61-clip{aspect-ratio:16 / 9}
+ #screen .visura-r61-figure img{
+  width:100%;height:100%;aspect-ratio:16 / 9;
+  object-fit:cover;object-position:100% center;
+ }
+ #screen .visura-r61-caption{font-size:11px;padding:8px 12px}
+ #screen .v23.visura-interior-r6 .visura-r61-figure{margin:12px 0}
+}
+@media(max-width:360px){
+ #screen .visura-r61-mobile-heading{padding:10px 12px}
+ #screen .visura-r61-mobile-heading strong{font-size:18px}
+ #screen .visura-r61-mobile-heading span{font-size:12.5px}
+}
