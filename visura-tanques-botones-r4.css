@@ -1,0 +1,12 @@
+/* VISURA TANQUES R4 · banners reales aprobados · solo selector de inicio */
+.v23-chooser.visura-r4-banners{border:0;background:transparent;padding:0;max-width:1200px;margin:12px auto}
+.v23-chooser.visura-r4-banners .v23-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.v23-chooser.visura-r4-banners .v23-grid>button{display:flex;flex-direction:column;width:100%;padding:0;border:1px solid #dbe4ed;border-radius:19px;overflow:hidden;background:#fff;min-width:0;min-height:44px;text-align:left;cursor:pointer;box-shadow:0 6px 20px rgba(11,38,71,.1)}
+.v23-chooser.visura-r4-banners .v23-grid>button:focus-visible{outline:3px solid #D52835;outline-offset:3px}
+.v23-chooser.visura-r4-banners img{display:block;width:100%;height:auto;max-height:none;aspect-ratio:3/1;object-fit:contain;border-radius:0}
+.v23-chooser.visura-r4-banners .v23-grid>button>strong{display:none}
+@media(max-width:670px){
+ .v23-chooser.visura-r4-banners .v23-grid{gap:14px}
+ .v23-chooser.visura-r4-banners .v23-grid>button{border-radius:15px}
+ .v23-chooser.visura-r4-banners .v23-grid>button>strong{display:block;font-size:1rem;color:#0B2647;font-weight:800;padding:9px 13px;line-height:1.2}
+}
