@@ -1,0 +1,40 @@
+/* VISURA PREPARA TANQUES R6: estilo interior exclusivo, sin lógica de dominio */
+:root{--visura-ink:#0b2647;--visura-red:#c61928;--visura-blue:#08649a;--visura-muted:#536781;--visura-line:#dae4f0;--visura-sheet:#fff}
+#screen .v23.visura-interior-r6{max-width:1120px;margin:8px auto 18px;border:1px solid var(--visura-line);background:#fff;border-radius:19px;box-shadow:0 8px 24px #0b264710;padding:16px;min-width:0}
+#screen .v23.visura-interior-r6>.visura-interior-hero{display:block;width:100%;height:auto;max-height:none;aspect-ratio:3/1;object-fit:contain;border-radius:14px;margin:10px 0 16px}
+#screen .v23.visura-interior-r6>h2{font-size:clamp(20px,2.3vw,27px);color:var(--visura-ink);margin:14px 0 8px}
+#screen .v23.visura-interior-r6>.v23-note{color:var(--visura-muted);font-size:13px;line-height:1.55}
+#screen .v23.visura-interior-r6>button[data-visura="back"]{min-height:44px;border:1px solid var(--visura-line);background:#f5f8fc;color:var(--visura-ink);border-radius:10px;font-weight:700;padding:9px 15px}
+#screen .v23.visura-interior-r6 .v23-grid{gap:12px}
+#screen .v23.visura-interior-r6 .v23-tank{border:1px solid var(--visura-line);background:#f9fbfe;border-radius:14px}
+#screen .v23.visura-interior-r6 .v23-tank h3{color:var(--visura-ink)}
+#screen .v23.visura-interior-r6 .v28-list{border:1px solid var(--visura-line);border-radius:13px;padding:12px;background:#f9fbfe}
+#screen .v23.visura-interior-r6 .v25-actions button{border:1px solid #b7c9dd;background:#fff;color:var(--visura-ink)}
+#screen .v23.visura-interior-r6 .v25-actions button:focus-visible,#screen .v23.visura-interior-r6>button:focus-visible{outline:3px solid var(--visura-blue);outline-offset:2px}
+#screen:has(#loadForm)::before,#screen:has(#dischargeForm)::before,#screen:has(#editForm)::before,#screen:has(#extraVisitForm)::before,#screen:has(#deliveryDate)::before{content:"";display:block;width:100%;max-width:1120px;aspect-ratio:3/1;background-repeat:no-repeat;background-position:center;background-size:contain;margin:0 auto 16px;border-radius:17px;box-shadow:0 8px 22px #10294917}
+#screen:has(#loadForm)::before{background-image:url('assets/cargas-aprobada.png')}
+#screen:has(#dischargeForm)::before,#screen:has(#editForm)::before,#screen:has(#extraVisitForm)::before,#screen:has(#deliveryDate)::before{background-image:url('assets/descargas-aprobada.png')}
+#screen:has(#loadForm),#screen:has(#dischargeForm),#screen:has(#editForm),#screen:has(#extraVisitForm),#screen:has(#deliveryDate){max-width:1180px}
+#screen:has(#loadForm)>.heading,#screen:has(#dischargeForm)>.heading,#screen:has(#editForm)>.heading,#screen:has(#extraVisitForm)>.heading,#screen:has(#deliveryDate)>.heading{color:var(--visura-ink);font-size:clamp(21px,2.4vw,28px);letter-spacing:-.02em;margin:12px 0 14px}
+#screen #loadForm,#screen #dischargeForm,#screen #editForm,#screen #extraVisitForm{max-width:880px;padding:clamp(14px,2.3vw,24px);border:1px solid var(--visura-line);border-radius:17px;background:var(--visura-sheet);box-shadow:0 4px 18px #0b26470a;margin:15px 0 20px}
+#screen #loadForm .field,#screen #dischargeForm .field,#screen #editForm .field,#screen #extraVisitForm .field{color:var(--visura-ink);font-weight:700}
+#screen #loadForm :is(input,select),#screen #dischargeForm :is(input,select),#screen #editForm :is(input,select),#screen #extraVisitForm :is(input,select){border:1px solid #c6d4e2;color:#162d4c;background:#fff;min-height:48px}
+#screen #loadForm :is(input,select):focus-visible,#screen #dischargeForm :is(input,select):focus-visible,#screen #editForm :is(input,select):focus-visible,#screen #extraVisitForm :is(input,select):focus-visible{outline:2px solid var(--visura-blue);outline-offset:2px}
+#screen #loadForm .btn,#screen #dischargeForm .btn,#screen #editForm .btn,#screen #extraVisitForm .btn{background:#ba1731;color:#fff;font-weight:800;border-radius:12px;min-height:48px}
+#screen #loadForm .btn.secondary,#screen #dischargeForm .btn.secondary,#screen #editForm .btn.secondary,#screen #extraVisitForm .btn.secondary{background:#f2f6fa;color:var(--visura-ink);border:1px solid var(--visura-line)}
+#screen:has(#loadForm)>.notice,#screen:has(#dischargeForm)>.notice,#screen:has(#extraVisitForm)>.notice{max-width:880px}
+#screen:has(#dischargeForm)>.card,#screen:has(#editForm)>.card,#screen:has(#deliveryDate)>.card,#screen:has(#extraVisitForm)>.card{border:1px solid var(--visura-line);box-shadow:0 4px 15px #0b264708;border-radius:14px}
+#screen:has(#dischargeForm)>.spaced,#screen:has(#editForm)>.spaced{color:var(--visura-ink)}
+@media(min-width:850px){
+ #screen #loadForm,#screen #dischargeForm,#screen #editForm,#screen #extraVisitForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:10px 18px}
+ #screen #loadForm .check,#screen #dischargeForm .check,#screen #editForm .check,#screen #extraVisitForm .check,
+ #screen #loadForm .hint,#screen #dischargeForm .hint,#screen #editForm .hint,#screen #extraVisitForm .hint,
+ #screen #loadForm>.btn,#screen #dischargeForm>.btn,#screen #editForm>.btn,#screen #extraVisitForm>.btn{grid-column:1/-1}
+}
+@media(max-width:670px){
+ #screen .v23.visura-interior-r6{padding:12px;border-radius:15px}
+ #screen .v23.visura-interior-r6>.visura-interior-hero{border-radius:11px}
+ #screen:has(#loadForm)::before,#screen:has(#dischargeForm)::before,#screen:has(#editForm)::before,#screen:has(#extraVisitForm)::before,#screen:has(#deliveryDate)::before{border-radius:13px;margin-bottom:14px}
+ #screen #loadForm,#screen #dischargeForm,#screen #editForm,#screen #extraVisitForm{padding:14px;border-radius:14px}
+}
+@media(prefers-reduced-motion:reduce){#screen .v23.visura-interior-r6 *,#screen #loadForm *,#screen #dischargeForm *{scroll-behavior:auto!important}}
