@@ -1,0 +1,4 @@
+/* VISURA 14 R9.3 — fallback visible solo cuando el banner aprobado no carga. */
+.v23-chooser.visura-r4-banners .v23-grid>button.vr93-banner-failed{min-height:64px;justify-content:center;border-color:#c8d8e7;background:#f3f8fc;color:#0b3761}
+.v23-chooser.visura-r4-banners .v23-grid>button.vr93-banner-failed>img{display:none!important}
+.v23-chooser.visura-r4-banners .v23-grid>button.vr93-banner-failed>strong{display:block!important;padding:16px;color:inherit;font-size:18px;line-height:1.3}
