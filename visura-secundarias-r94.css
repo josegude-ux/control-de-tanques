@@ -1,0 +1,42 @@
+/* VISURA 14 R9.4 — Historial, Más y Configuración. Sin cambios en controles ni datos. */
+#screen:is(.vr94-history,.vr94-admin){color:#0b2647;max-width:980px;padding-bottom:24px;min-width:0}
+#screen:is(.vr94-history,.vr94-admin)>.heading{font-size:clamp(23px,3vw,30px);line-height:1.2;letter-spacing:-.025em;margin:8px 0 18px;color:#0b2647;overflow-wrap:anywhere}
+#screen.vr94-history>h3.heading{font-size:17px;margin:24px 0 10px;letter-spacing:0}
+#screen:is(.vr94-history,.vr94-admin)>.card{background:#fff;border:1px solid #d5e0ec;border-radius:14px;box-shadow:0 3px 14px #0b264708;padding:16px;margin:12px 0;min-width:0;overflow-wrap:anywhere}
+#screen:is(.vr94-history,.vr94-admin)>.card h3{font-size:17px;line-height:1.3;color:#0b3761;margin:0 0 10px}
+#screen:is(.vr94-history,.vr94-admin) .compact{font-size:14px;line-height:1.5}
+#screen:is(.vr94-history,.vr94-admin) .hint,#screen.vr94-admin .update-info{color:#536781;font-size:13px;line-height:1.5}
+#screen:is(.vr94-history,.vr94-admin) .notice{overflow-wrap:anywhere;line-height:1.55}
+#screen:is(.vr94-history,.vr94-admin) .empty{border:1px dashed #cbd9e7;border-radius:12px;background:#f6f9fc;color:#536781;padding:24px 14px;margin:12px 0;font-size:14px}
+#screen.vr94-history>.vr94-movement{border-left:4px solid #8195a8;padding:13px 16px;margin:9px 0}
+#screen.vr94-history>.vr94-movement[data-vr94-kind=load]{border-left-color:#08649a}
+#screen.vr94-history>.vr94-movement[data-vr94-kind=unload]{border-left-color:#b61b32}
+#screen.vr94-history>.vr94-movement[data-vr94-kind=audit]{border-left-color:#977018}
+#screen.vr94-history>.vr94-movement>.row{flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+#screen.vr94-history>.vr94-movement>.row>b{font-size:15px;flex:1 1 180px;min-width:0;overflow-wrap:anywhere}
+#screen.vr94-history>.vr94-movement .tag{flex:none;background:#edf3f9;color:#425c76;font-size:12px;border-radius:7px;font-variant-numeric:tabular-nums;max-width:100%;white-space:normal}
+#screen.vr94-history>.vr94-movement>p.compact{margin:7px 0 0;color:#344b65}
+#screen.vr94-admin>.card>p{line-height:1.5}
+#screen.vr94-admin>.card:has(>button[data-cloud=logout],#cloudLoginForm){border-top:3px solid #0b4677}
+#screen.vr94-admin>.card:has(>button[data-act=go-gerencia],>button[data-act=go-clientes],>button[data-act=go-planificacion]){border-top:3px solid #08649a}
+#screen.vr94-admin>.card:has(#stockAdjustForm){border-top:3px solid #977018}
+#screen.vr94-admin>.card:has(>button[data-act=check-update]),#screen.vr94-admin>.card:has(>button[data-act=backup]){background:#f7fafd;box-shadow:none}
+#screen.vr94-admin :is(.btn,.vr7-switch button,.vr9-switch button),#screen.vr94-history .btn{min-height:44px;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+#screen.vr94-admin .btn.secondary,#screen.vr94-history .btn.secondary{background:#f3f7fb;border:1px solid #c8d8e7;color:#163c60}
+#screen.vr94-admin :is(.btn[data-act=reset],.btn[data-cloud=logout]),#screen.vr94-history .btn.danger{background:#fff0f2;color:#8d1a2c;border:1px solid #e6bcc5}
+#screen:is(.vr94-admin,.vr94-history) button:focus-visible,#screen.vr94-admin :is(input,select,summary):focus-visible{outline:3px solid #08649a;outline-offset:2px}
+#screen.vr94-admin .field{color:#183d5f;overflow-wrap:anywhere}
+#screen.vr94-admin .field :is(input,select){min-width:0;max-width:100%;border-color:#c8d8e7}
+#screen.vr94-admin .card pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+#screen.vr94-admin .card details{border:1px solid #d5e0ec;border-radius:10px;padding:10px;margin:10px 0}
+#screen.vr94-admin .card details summary{min-height:44px;cursor:pointer;padding:10px 2px;font-weight:700;color:#0b3761;overflow-wrap:anywhere}
+#screen.vr94-admin .vr7-settings,#screen.vr94-admin .vr9-settings{border-top:3px solid #0b4677}
+#screen.vr94-admin .vr7-settings p,#screen.vr94-admin .vr9-settings p{font-size:14px;line-height:1.5}
+#screen.vr94-admin .vr7-switch,#screen.vr94-admin .vr9-switch{max-width:100%;flex-wrap:wrap}
+#screen.vr94-admin .vr7-switch button,#screen.vr94-admin .vr9-switch button{flex:0 1 auto;max-width:100%}
+@media(min-width:800px){
+ #screen.vr94-admin>.card:has(>button[data-act=go-gerencia][data-act],>button[data-act=go-clientes][data-act],>button[data-act=go-planificacion][data-act])>button[data-act^=go-]{width:auto;min-width:180px;margin:5px 10px 5px 0;max-width:100%}
+ #screen.vr94-admin>.card:has(>button[data-act=check-update])>button[data-act=check-update],#screen.vr94-admin>.card:has(>button[data-act=backup])>button[data-act=backup]{width:auto;min-width:210px;max-width:100%}
+ #screen.vr94-history>.vr94-movement{padding:15px 20px}
+}
+@media(max-width:380px){#screen:is(.vr94-history,.vr94-admin)>.card{padding:12px}#screen.vr94-history>.vr94-movement>.row>b{flex-basis:100%}}
