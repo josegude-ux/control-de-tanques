@@ -1,0 +1,5 @@
+/* VISURA 14 R9.7 — accesibilidad visual de controles existentes. */
+#roleButton{min-height:44px;min-width:44px}
+#roleButton:focus-visible,.role-picker button:focus-visible{outline:3px solid #08649a;outline-offset:2px}
+#screen .vr7-switch button{min-height:44px;min-width:44px}
+.demo-banner{color:#536781}
