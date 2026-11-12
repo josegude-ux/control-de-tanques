@@ -1,4 +1,4 @@
-/* VISURA 14 R9: presentación transversal de recursos R8 y navegación.
+/* VISURA 14 R9.1: presentación transversal de recursos R8 y navegación.
    No escribe estado de negocio, no obtiene datos, no modifica permisos. */
 (()=>{'use strict';
 const KEY='visura14.view.gerencia.r7', ASSETS={cisterna:['assets/gerencia-r8-cisterna.jpg','Camión cisterna Mahou con cabeza tractora'],camion:['assets/gerencia-r8-camion.jpg','Camión Mahou de caja cerrada y puerta lateral'],furgoneta:['assets/gerencia-r8-furgoneta.jpg','Furgoneta de reparto con rótulo Voldis rojo']};
@@ -9,6 +9,7 @@ const kind=v=>v==='camion'||v==='furgoneta'?v:null;
 function picture(k,cls='vr9-image'){const im=document.createElement('img');im.className=cls;im.src=ASSETS[k][0];im.alt=ASSETS[k][1];im.loading='lazy';im.decoding='async';im.draggable=false;return im}
 function figure(k){const f=document.createElement('figure');f.className='vr9-art';f.dataset.kind=k;f.append(picture(k));return f}
 function attach(target,k,where='after'){if(!target||!k)return;const parent=target.parentElement;if(!parent)return;const next=where==='after'?target.nextElementSibling:parent.querySelector(':scope > .vr9-art');if(next?.classList.contains('vr9-art')){if(next.dataset.kind!==k){next.dataset.kind=k;next.replaceChildren(picture(k))}return}if(where==='after')target.after(figure(k));else target.prepend(figure(k))}
+function attachBefore(target,k){if(!target||!k)return;const previous=target.previousElementSibling;if(previous?.classList.contains('vr9-art')){if(previous.dataset.kind!==k){previous.dataset.kind=k;previous.replaceChildren(picture(k))}return}target.before(figure(k))}
 function syncMode(){const dash=root.querySelector('.vr7-dashboard');if(dash&&dash.classList.contains('vr7-simple')!==(mode==='simple'))dash.querySelector('button[data-vr7-mode="'+mode+'"]')?.click();root.classList.toggle('vr9-simple',mode==='simple');root.querySelectorAll('[data-vr9-mode],[data-vr7-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.vr9Mode||b.dataset.vr7Mode)===mode)))}
 function selection(){return kind(root.querySelector('#vehicle')?.value)||null}
 function apply(){
@@ -24,7 +25,7 @@ function apply(){
    const k=title==='existencias del camion'?'camion':title==='existencias de la furgoneta'?'furgoneta':selection();if(k){card.classList.add('vr9-summary');attach(h,k)}
   }
   if(title.startsWith('saldo calculado')){
-   for(const row of card.querySelectorAll(':scope > .row')){if(norm(row.firstElementChild?.textContent)==='cisterna principal')attach(row,'cisterna')}
+   for(const row of card.querySelectorAll(':scope > .row')){if(norm(row.firstElementChild?.textContent)==='cisterna principal')attachBefore(row,'cisterna')}
    for(const h4 of card.querySelectorAll(':scope > h4')){const t=norm(h4.textContent);if(t==='camion'||t.startsWith('camion ·'))attach(h4,'camion');else if(t==='furgoneta'||t.startsWith('furgoneta ·'))attach(h4,'furgoneta')}
   }
  }
@@ -33,7 +34,7 @@ function apply(){
  // Otros lugares con identidad de vehículo explícita, sin cambiar datos ni campos.
  const delivery=root.querySelector(':scope > h2.heading');const dt=norm(delivery?.textContent);
  if(dt==='descarga · camion')attach(delivery,'camion');else if(dt==='descarga · furgoneta')attach(delivery,'furgoneta');
- for(const [id,k] of [['stockC1','camion'],['stockF1','furgoneta'],['stockCistern','cisterna'],['openingCisterna','cisterna']]){const field=root.querySelector('#'+id);if(field)attach(field.closest('label'),k)}
+ for(const [id,k] of [['stockC1','camion'],['stockF1','furgoneta'],['stockCistern','cisterna'],['openingCisterna','cisterna']]){const field=root.querySelector('#'+id);if(field)attachBefore(field.closest('label'),k)}
  for(const h4 of root.querySelectorAll('#openingForm > h4')){const k=norm(h4.textContent);if(kind(k))attach(h4,k)}
  // Configuración visual para perfiles no Gerencia; el control de R7 permanece intacto.
  const heading=root.querySelector(':scope > h2.heading');const isSettings=heading&&['mas','configuracion de pruebas'].includes(norm(heading.textContent));
