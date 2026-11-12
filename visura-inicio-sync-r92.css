@@ -1,0 +1,14 @@
+/* VISURA 14 R9.2: panel de conexión secundario al final de Inicio. */
+#screen.vr92-home-layout{padding-bottom:12px}
+#visuraCloudPanel.vr92-home{width:100%;max-width:980px;padding:0 17px 12px!important;margin:0 auto}
+#visuraCloudPanel.vr92-home>.card{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px 12px;margin:0;border:1px solid #d5e0ec;border-radius:12px;padding:10px 12px;background:#f5f8fc;box-shadow:none}
+#visuraCloudPanel.vr92-home #cloudBadge{margin:0;color:#344b65;font-size:13px;line-height:1.45;overflow-wrap:anywhere;min-width:0}
+#visuraCloudPanel.vr92-home .btn{min-height:44px;width:auto;margin:0;padding:8px 13px;border:1px solid #b9c9db;border-radius:9px;background:#fff;color:#163c60;font-size:13px;font-weight:700;line-height:1.2;white-space:normal}
+#visuraCloudPanel.vr92-home .btn:disabled{opacity:.65;cursor:not-allowed}
+#visuraCloudPanel.vr92-home .btn:focus-visible{outline:3px solid #08649a;outline-offset:2px}
+@media(max-width:600px){
+ #visuraCloudPanel.vr92-home{padding:0 12px 12px!important}
+ #visuraCloudPanel.vr92-home>.card{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px}
+ #visuraCloudPanel.vr92-home #cloudBadge{grid-column:1/-1}
+ #visuraCloudPanel.vr92-home .btn{width:100%;padding-inline:8px}
+}
