@@ -1,0 +1,44 @@
+/* VISURA 14 R9.6 — presentación exclusiva de Carga y Descarga. No altera DOM ni datos. */
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate){color:#0b2647;min-width:0;max-width:980px;padding-bottom:24px;overflow-wrap:anywhere}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate)>.heading{font-size:clamp(23px,3vw,30px);line-height:1.2;letter-spacing:-.025em;margin:8px 0 16px;color:#0b2647}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate)>.card{background:#fff;border:1px solid #d5e0ec;border-radius:14px;box-shadow:0 3px 14px #0b264708;padding:16px;margin:12px 0;min-width:0}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .card h3{font-size:18px;line-height:1.3;color:#0b3761;margin:0 0 10px}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .hint{font-size:13px;line-height:1.55;color:#536781}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) :is(.compact,.tiny){font-size:14px;line-height:1.5}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .notice{line-height:1.55;overflow-wrap:anywhere}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .empty{border:1px dashed #cbd9e7;border-radius:12px;background:#f6f9fc;color:#536781;padding:24px 14px;margin:12px 0;font-size:14px}
+#screen :is(#loadForm,#dischargeForm,#extraVisitForm,#editForm){max-width:100%;min-width:0}
+#screen :is(#loadForm,#dischargeForm){background:#fff;border:1px solid #d5e0ec;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 3px 14px #0b264708}
+#screen :is(#loadForm,#dischargeForm,#extraVisitForm,#editForm)>.field{min-width:0;margin:13px 0 8px;font-size:15px;line-height:1.4;color:#183d5f}
+#screen :is(#loadForm,#dischargeForm,#extraVisitForm,#editForm)>.field :is(input,select),#screen:has(>.card #deliveryDate) #deliveryDate{min-height:50px;min-width:0;max-width:100%;font-size:16px;border-color:#c8d8e7;color:#0b2647}
+#screen :is(#loadLiters,#reading,#editReading){font-size:clamp(23px,4vw,28px)!important;font-weight:800;min-height:60px!important;font-variant-numeric:tabular-nums;background:#f3f8fc;border:2px solid #a8c5dd!important}
+#screen :is(#loadForm,#extraVisitForm)>.check{min-height:44px;padding:12px;border:1px solid #d5e0ec;border-radius:10px;background:#f5f8fc;margin:12px 0;line-height:1.5;align-items:flex-start;overflow-wrap:anywhere}
+#screen :is(#loadForm,#extraVisitForm)>.check input{width:23px;height:23px;flex:none;accent-color:#0b4677;margin:1px 0 0}
+#screen #loadForm>.vr9-art{max-width:520px;width:100%;margin:10px 0 14px}
+#screen #loadForm>.vr9-art>.vr9-image{aspect-ratio:auto;height:auto;object-fit:contain}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .row{flex-wrap:wrap;gap:8px 12px;align-items:baseline}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .row>*{min-width:0;overflow-wrap:anywhere}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .row>b{font-variant-numeric:tabular-nums}
+#screen:has(>#dischargeForm,>.card #editForm)>.heading+.card>.row{padding:9px 0;border-bottom:1px solid #e1e9f1}
+#screen:has(>#dischargeForm,>.card #editForm)>.heading+.card>.row:nth-of-type(2){background:#edf5fc;border:1px solid #d5e0ec;border-radius:10px;padding:12px;margin-top:8px;align-items:center}
+#screen:has(>#dischargeForm,>.card #editForm)>.heading+.card>.row:nth-of-type(2)>b{font-size:clamp(24px,4vw,32px);line-height:1.2;color:#0b3761}
+#screen:has(>.card #deliveryDate)>.card:has(>button[data-act=start-planned-visit]){border-left:4px solid #08649a}
+#screen:has(>.card #deliveryDate)>.card:has(>button[data-act=start-planned-visit])>.row>b:first-child{flex:1 1 160px;font-size:16px;color:#0b3761}
+#screen:has(>.card #deliveryDate)>.card:has(>button[data-act=start-planned-visit])>.row>b:last-child{flex:0 1 auto;color:#0b3761;font-size:17px}
+#screen #extraCatalogDetails{border:1px solid #d5e0ec;background:#edf5fc;border-radius:10px;padding:10px 12px;overflow-wrap:anywhere}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .btn{min-height:48px;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) .btn.secondary{background:#f3f7fb;border:1px solid #c8d8e7;color:#163c60}
+#screen:has(>.card #deliveryDate) .btn[data-act=start-planned-visit]{background:#0b4677;border-color:#0b4677;color:#fff}
+#screen:has(>#dischargeForm,>.card #editForm) :is(.btn[data-act=reset-meter],#editForm>button[type=submit]){background:#fff4db;color:#69490e;border:1px solid #d7b875}
+#screen:has(>#dischargeForm,>.card #editForm) .btn[data-act=finish-visit]{background:#fff0f2;color:#8d1a2c;border:1px solid #e0a6b3}
+#screen:has(>#dischargeForm,>.card #editForm) .linklike[data-act=edit-discharge]{min-height:44px;display:inline-flex;align-items:center;padding:8px 0;color:#0b4677;font-weight:750;max-width:100%;white-space:normal}
+#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate) :is(button,input,select):focus-visible{outline:3px solid #08649a;outline-offset:2px}
+@media(min-width:800px){
+ #screen :is(#loadForm,#dischargeForm){padding:20px}
+ #screen #dischargeForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+ #screen #dischargeForm>:not(.field),#screen #dischargeForm>.field:has(#reading){grid-column:1/-1}
+ #screen :is(#loadForm,#dischargeForm)>button,#screen #editForm>button,#screen #extraVisitForm>button{max-width:440px}
+ #screen:has(>.card #deliveryDate)>.card:has(>button[data-act=start-planned-visit])>button{max-width:260px}
+ #screen:has(>#dischargeForm,>.card #editForm)>.btn{max-width:440px;display:block}
+}
+@media(max-width:380px){#screen :is(#loadForm,#dischargeForm){padding:12px}#screen:has(>#loadForm,>#dischargeForm,>.card #editForm,>.card #extraVisitForm,>.card #deliveryDate)>.card{padding:12px}}
