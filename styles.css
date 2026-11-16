@@ -109,3 +109,46 @@ html, body { max-width:100%; }
 
 /* v0.9.27: vista previa del logo en Inicio, sin cambios en datos */
 .home-logo-preview{max-width:400px;margin:0 auto 22px;border-radius:20px;overflow:hidden;background:#000;box-shadow:0 6px 22px #0002}.home-logo-preview img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+
+/* VISURA TANQUES R4.1 · tarjetas de existencias; presentación únicamente */
+.tank-r41-list{margin:12px 0 18px}
+.tank-r41-list>h3{font-size:18px;margin:0 0 12px;letter-spacing:-.3px}
+.tank-r41-item{background:#fff;border:1px solid #e7dfe1;border-left:4px solid #b61b32;border-radius:16px;padding:15px;margin:10px 0;box-shadow:0 2px 8px #2b20200c;min-width:0}
+.tank-r41-heading{display:flex;align-items:center;gap:11px}
+.tank-r41-heading>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tank-r41-heading strong{font-size:16px}
+.tank-r41-heading small{color:#675e61;font-size:12px}
+.tank-r41-symbol{display:flex;align-items:center;justify-content:center;flex:0 0 44px;height:44px;border-radius:12px;background:#f7ecee;color:#a81630;font-size:25px}
+.tank-r41-values{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:13px;flex-wrap:wrap}
+.tank-r41-values strong{font-size:22px;color:#252025}
+.tank-r41-values span,.tank-r41-caption{font-size:13px;color:#61585b}
+.tank-r41-meter{height:10px;background:#eee9ea;border-radius:999px;overflow:hidden;margin-top:11px}
+.tank-r41-meter>span{display:block;height:100%;background:#b61b32;border-radius:999px}
+.tank-r41-caption{margin:7px 0 0}
+.tank-r41-unavailable{margin:13px 0 0;background:#fff4e3;color:#69451c;padding:11px;border-radius:10px;font-size:13px}
+.tank-r41-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:14px 2px;font-size:14px;flex-wrap:wrap}
+.tank-r41-total strong{font-size:20px}
+@media(min-width:760px){.tank-r41-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tank-r41-list>h3,.tank-r41-list>.tank-r41-total,.tank-r41-list>.hint{grid-column:1/-1}.tank-r41-item{margin:0}}
+@media(min-width:1100px){.tank-r41-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* R5 · detalle industrial Mahou en modo consulta, sin acciones de escritura */
+.tank-r5-open,.tank-r5-back{appearance:none;cursor:pointer;min-height:44px;border-radius:11px;font:inherit;font-weight:700}
+.tank-r5-open{margin-top:12px;width:100%;border:1px solid #b61b32;color:#9b1429;background:#fff}
+.tank-r5-open:focus-visible,.tank-r5-back:focus-visible{outline:3px solid #d79a26;outline-offset:3px}
+.tank-r5-detail{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));max-width:700px;margin:0 auto}
+.tank-r5-back{background:transparent;border:1px solid #d8d0d2;color:#272126;padding:8px 14px;margin-bottom:14px}
+.tank-r5-hero{border-radius:17px;background:linear-gradient(145deg,#20232a,#111419);color:#fff;padding:20px;overflow:hidden}
+.tank-r5-overline{font-size:12px;font-weight:700;letter-spacing:.07em;color:#e9c16b}
+.tank-r5-hero h2{margin:10px 0 2px;font-size:25px;color:#fff}
+.tank-r5-hero p{margin:0;color:#ddd;font-size:14px}
+.tank-r5-illustration{height:145px;display:flex;align-items:center;justify-content:center}
+.tank-r5-vessel{display:block;position:relative;width:min(72%,240px);height:105px;border:3px solid #bfc4c8;border-radius:38% / 17%;background:linear-gradient(90deg,#646b73,#e6e9eb 19%,#9ba3a9 35%,#f0f1f1 53%,#7c858d 78%,#d3d6d8);box-shadow:inset 0 8px 18px #30343a55,0 10px 16px #0008}
+.tank-r5-vessel:after{content:'';position:absolute;left:12%;right:12%;bottom:-12px;height:12px;border-left:9px solid #969da3;border-right:9px solid #969da3}
+.tank-r5-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.tank-r5-facts>div{min-width:0;background:#f5f3f4;border-radius:13px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.tank-r5-facts span{font-size:12px;color:#625b60}
+.tank-r5-facts strong{font-size:clamp(16px,4.5vw,23px);overflow-wrap:anywhere}
+.tank-r5-level{margin:14px 0 20px}
+.tank-r5-level .row{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:14px}
+@media(max-width:350px){.tank-r5-facts{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.tank-r5-vessel{transition:none}}
