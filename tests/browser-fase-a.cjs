@@ -279,7 +279,7 @@ function contentType(file){
    pending:Object.keys(TankCloud.meta().pending).length,
    store:STORE
   }));
-  await rep.page.goto(ORIGIN+'/?app_version=0.10.2&reparacion=test');
+  await rep.page.goto(ORIGIN+'/?app_version=0.10.3&reparacion=test');
   await rep.page.waitForFunction(()=>typeof TankCloud!=='undefined');
   // Session en localStorage; si el panel de login aparece, reconectar.
   if(await rep.page.locator('#cloudLoginForm').isVisible().catch(()=>false)){
@@ -298,7 +298,7 @@ function contentType(file){
   }));
   assert.equal(after.store,before.store,'mismo IndexedDB STORE');
   assert.equal(after.tank,225);
-  assert.equal(after.version,'0.10.2');
+  assert.equal(after.version,'0.10.3');
   // SW no debe borrar datos: verificar que sw.js no usa indexedDB API
   const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
   assert.equal(/\bindexedDB\s*\./.test(sw),false);
