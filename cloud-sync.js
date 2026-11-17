@@ -100,7 +100,7 @@ const TankCloud=(()=>{
   // se tienen en cuenta en las existencias visibles de otro perfil.
   const stagedMeta=C.copy(meta),stagedState=C.copy(state);
   const visible=visibleMeta(stagedMeta);
-  if(member?.role==='reparto')stagedState.vehicle=member.vehicle;
+  if(member?.role==='reparto'&&!['camion','furgoneta'].includes(stagedState.vehicle))stagedState.vehicle=member.vehicle||'camion';
   C.hydrate(visible,stagedState,account);applyBalances(stagedState,visible);
   if(member&&!member.active)stagedState.page='admin';
   stagedMeta.last[stagedState.role]=Object.fromEntries(Object.entries(C.extract(stagedState)).map(([k,r])=>[k,C.signature(r)]));
@@ -201,7 +201,7 @@ const TankCloud=(()=>{
   if(!connected())return false;
   if(!permitted(role)){toast('Este usuario no tiene permiso para ese perfil');return true;}
   await save(state);state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page='inicio';
-  if(member.role==='reparto')state.vehicle=member.vehicle;C.hydrate(visibleMeta(),state,account);applyBalances(state,visibleMeta());
+  if(member.role==='reparto'&&!['camion','furgoneta'].includes(state.vehicle))state.vehicle=member.vehicle||'camion';C.hydrate(visibleMeta(),state,account);applyBalances(state,visibleMeta());
   meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));
   await tx([[profileKeys[role],state],[key(),meta]]);render();return true;
  }
@@ -221,7 +221,7 @@ const TankCloud=(()=>{
   meta=await dbGet(key())||C.empty();
   meta.pending=meta.pending||{};meta.rows=meta.rows||{};meta.last=meta.last||{};meta.conflicts=meta.conflicts||{};
   const role=roleDefault();state=await dbGet(profileKeys[role])||fresh(role);state.role=role;state.page=member?.active?'inicio':'admin';
-  if(member?.active){if(member.role==='reparto')state.vehicle=member.vehicle;C.hydrate(visibleMeta(),state,account);applyBalances(state,visibleMeta());meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
+  if(member?.active){if(member.role==='reparto'&&!['camion','furgoneta'].includes(state.vehicle))state.vehicle=member.vehicle||'camion';C.hydrate(visibleMeta(),state,account);applyBalances(state,visibleMeta());meta.last[role]=Object.fromEntries(Object.entries(C.extract(state)).map(([k,r])=>[k,C.signature(r)]));}
   else if(count()){message=`Cuenta desactivada o pendiente · ${count()} cambios locales conservados`;}
   else message=member?.active?'Conectado · sincronización automática':'Cuenta pendiente de autorización';
   if(member?.active)message='Conectado · sincronización automática';
@@ -305,7 +305,6 @@ const TankCloud=(()=>{
   document.querySelectorAll('[data-act=export-plan]').forEach(b=>b.hidden=true);
   document.querySelectorAll('[data-page="carga"],[data-page="visita"]').forEach(b=>{if(state.role==='gerencia')b.hidden=true;});
   document.querySelectorAll('[data-profile]').forEach(b=>b.hidden=!permitted(b.dataset.profile));
-  if(member?.role==='reparto')for(const id of ['vehicle','loadVehicle','planReceiveVehicle']){const e=document.getElementById(id);if(e){e.value=member.vehicle;e.disabled=true;}}
   const screen=document.getElementById('screen');
   const replacements=[
    ['Operación de prueba local. Un tanque por registro. Puedes cargar de nuevo tras enviar un lote. Si la cisterna es desconocida, la conciliación queda pendiente. Confirma que el contador físico se ha puesto a cero.','Un tanque por registro. Los cambios se guardan en el móvil y se sincronizan automáticamente. Confirma que el contador físico se ha puesto a cero.'],

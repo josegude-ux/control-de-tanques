@@ -153,7 +153,7 @@ test('9b. source=null no asigna tanque 1 ni descuenta (BARALLETE 240,61 L)',()=>
  assert.equal(C.validSource({source:0}),true);
 });
 
-test('9c. Reparto no reenvía provisionales de otro vehículo',()=>{
+test('9c. Reparto conserva provisionales de ambos vehículos (puede llevar cualquiera)',()=>{
  const extracted=C.extract({
   role:'reparto',vehicle:'camion',visits:[],openVisit:null,
   provisionalHistory:[
@@ -161,7 +161,7 @@ test('9c. Reparto no reenvía provisionales de otro vehículo',()=>{
    {id:'p-cam',vehicle:'camion',amounts:[1,2,3],at:'2026-10-21T07:01:00Z'}
   ]
  });
- assert.equal(extracted['provisional:p-fur'],undefined);
+ assert.ok(extracted['provisional:p-fur'],'cambiar de vehículo no debe borrar el provisional del otro');
  assert.ok(extracted['provisional:p-cam']);
  const m=C.empty();
  C.receive(m,[opening20,
@@ -172,8 +172,7 @@ test('9c. Reparto no reenvía provisionales de otro vehículo',()=>{
  ]);
  const s={role:'reparto',vehicle:'camion',visits:[],openVisit:null};
  C.hydrate(m,s,'drv');
- assert.equal(s.provisionalHistory.length,1);
- assert.equal(s.provisionalHistory[0].vehicle,'camion');
+ assert.equal(s.provisionalHistory.length,2);
 });
 
 test('10. precisión decimal sin descuadres (413,57 + operaciones)',()=>{
@@ -192,7 +191,7 @@ test('11. service worker no toca IndexedDB (actualización segura)',()=>{
  assert.equal(/\bindexedDB\s*\./.test(sw),false);
  assert.equal(/openDB|IDBKeyRange|indexedDB\.open/.test(sw),false);
  assert.match(sw,/caches\.(open|keys|match)/);
- assert.match(sw,/control-tanques-demo-v0103/);
+ assert.match(sw,/control-tanques-demo-v0104/);
 });
 
 test('12. compatibilidad apertura 20/10/2026 y forbidSyncedDelete',()=>{
