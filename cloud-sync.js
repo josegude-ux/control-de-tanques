@@ -319,5 +319,18 @@ const TankCloud=(()=>{
   if(!member?.active||!editingTab||!permitted(state.role))document.querySelectorAll('#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) input,#screen form:not(#cloudLoginForm):not(#cloudPasswordForm) button').forEach(e=>e.disabled=true);
  }
  function canOperate(){if(!connected())return true;if(!permitted(state.role)){toast('Tu perfil ha cambiado. Revisa los accesos antes de continuar; los pendientes siguen guardados.');return false;}if(!member?.active||!editingTab){toast(count()?'Cuenta sin acceso: tus pendientes siguen guardados. Descarga copia JSON.':'Necesitas acceso autorizado');return false;}if(!state.cloudStockReady){toast('Gerencia debe establecer las existencias iniciales en el panel de saldos');return false;}if(state.cloudStockProblems?.length||Object.keys(meta.conflicts).length){toast('Revisa las incidencias de existencias o sincronización antes de continuar');return false;}return true;}
- return {init,save,switchRole,panel,decorate,connected,permitted,canAdjustStock,canOperate,status,sync,member:()=>member,meta:()=>meta,count,assertStagingIsolation,isStaging:()=>IS_STAGING};
+ // Solo lectura para informes PDF: filas confirmadas + pendientes visibles de esta cuenta. No modifica la cola.
+ function reportSource(){
+  const vm=visibleMeta();
+  const rows=Object.values(vm.rows||{}).map(r=>({...r,pending:false}));
+  const pend=Object.values(vm.pending||{}).map(r=>({...r,owner_id:r.owner_id||account,pending:true}));
+  const names={};for(const m of [...(members||[]),member].filter(Boolean))if(m.user_id)names[m.user_id]=m.nombre||'';
+  return {connected:connected(),account,role:member?.role||null,active:!!member?.active,records:[...rows,...pend],names,
+   lastSync:meta.lastSync||null,pendingCount:Object.keys(vm.pending||{}).length,conflicts:Object.keys(meta.conflicts||{}).length,members:(members||[]).map(m=>({user_id:m.user_id,nombre:m.nombre,role:m.role}))};
+ }
+ async function loadMembers(){
+  if(!connected()||member?.role!=='gerencia'||members.length)return;
+  const {data,error}=await client.from('tanques_members').select('*').order('nombre');if(!error&&data)members=data;
+ }
+ return {init,save,switchRole,panel,decorate,connected,permitted,canAdjustStock,canOperate,status,sync,member:()=>member,meta:()=>meta,count,assertStagingIsolation,isStaging:()=>IS_STAGING,reportSource,loadMembers};
 })();
