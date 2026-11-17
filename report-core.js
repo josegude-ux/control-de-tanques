@@ -3,6 +3,9 @@
    Solo lee registros; nunca crea movimientos ni modifica saldos o colas. */
 (function(root){
  'use strict';
+ // Nombres visibles de perfil: única fuente en role-rules.js.
+ const Roles=typeof module==='object'&&module.exports?require('./role-rules.js'):root.TankRoles;
+ const ops=()=>Roles.roleLabel('gerencia');
  const VEHICLES=['camion','furgoneta'];
  const VEHICLE_NAMES={camion:'Camión',furgoneta:'Furgoneta'};
  const TZ='Europe/Madrid';
@@ -76,11 +79,11 @@
   const reasons=[...o.provisionalReasons];
   if(pendingInScope)reasons.push(`${pendingInScope} operación(es) de este informe aún no están sincronizadas.`);
   const notes=[];
-  if(totals.cancelled)notes.push(`Incluye ${totals.cancelled.toLocaleString('es-ES')} L de descargas anuladas pendientes de conciliación por Gerencia.`);
+  if(totals.cancelled)notes.push(`Incluye ${totals.cancelled.toLocaleString('es-ES')} L de descargas anuladas pendientes de conciliación por ${ops()}.`);
   if(unknownVehicle.length)notes.push(`${unknownVehicle.length} movimiento(s) sin vehículo identificado no se incluyen.`);
-  if(all.some(r=>r.kind==='movement'&&!r.deleted&&madridDay(r.payload?.time)===o.date&&vehicles[r.payload?.vehicle||r.vehicle]&&r.payload?.type==='DESCARGA'))notes.push('Corregida: valor vigente tras la corrección. Anulada: pendiente de conciliar; sus litros cuentan hasta el ajuste de Gerencia.');
+  if(all.some(r=>r.kind==='movement'&&!r.deleted&&madridDay(r.payload?.time)===o.date&&vehicles[r.payload?.vehicle||r.vehicle]&&r.payload?.type==='DESCARGA'))notes.push('Corregida: valor vigente tras la corrección. Anulada: pendiente de conciliar; sus litros cuentan hasta el ajuste de '+ops()+'.');
   notes.push('La diferencia es cargas menos descargas del día; no equivale a existencias finales.');
-  const title=o.scope==='almacen'?'Informe de cargas — Operario':o.scope==='reparto'?'Informe de descargas — Operario':'Informe general — Gerencia';
+  const title=o.scope==='almacen'?'Informe de cargas — Operario':o.scope==='reparto'?'Informe de descargas — Operario':'Informe general — '+ops();
   return {title,date:o.date,scope:o.scope,operator:o.operator?author({owner_id:o.operator}):'',vehicleFilter:o.vehicle?VEHICLE_NAMES[o.vehicle]:'',
    vehicles:VEHICLES.filter(v=>!o.vehicle||v===o.vehicle).map(v=>vehicles[v]),totals,provisional:reasons.length>0,reasons,notes,
    showLoads:o.scope!=='reparto',showDischarges:o.scope!=='almacen',empty:totals.loadCount+totals.dischargeCount===0,

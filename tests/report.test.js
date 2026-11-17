@@ -106,3 +106,9 @@ test('El informe solo lee: la fuente de nube no expone escritura',()=>{
  const fn=cloud.slice(cloud.indexOf('function reportSource'),cloud.indexOf('async function loadMembers'));
  assert.doesNotMatch(fn,/meta\.pending\s*=|delete |tx\(|save\(|sync\(/);
 });
+
+test('Título del informe general con la etiqueta Operaciones',()=>{
+ const r=R.buildDailyReport(day,{...base,scope:'gerencia'});
+ assert.equal(r.title,'Informe general — Operaciones');
+ assert.ok(!JSON.stringify(r).includes('Gerencia'));
+});
