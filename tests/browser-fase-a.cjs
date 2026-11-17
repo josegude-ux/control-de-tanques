@@ -205,7 +205,6 @@ function contentType(file){
   assert.deepEqual(await alm.page.evaluate(()=>state.tanks.camion),[200,100,0]);
   await alm.page.locator('[data-act=go-carga]').click();
   await alm.page.locator('#loadLiters').fill('80');
-  await alm.page.locator('#zeroLoad').check();
   await alm.page.locator('#loadForm button[type=submit]').click();
   await waitSynced(alm.page);
   assert.equal(await alm.page.evaluate(()=>state.tanks.camion[0]),280);
@@ -215,7 +214,6 @@ function contentType(file){
   await rep.page.waitForFunction(()=>state.tanks.camion[0]===280);
   await rep.page.locator('[data-act=go-visita]').click();
   await rep.page.locator('#extraClient').fill('Bar Ficticio');
-  await rep.page.locator('#extraZero').check();
   await rep.page.locator('#extraVisitForm button').click();
   await rep.page.locator('#destTank').selectOption('1');
   await rep.page.locator('#reading').fill('30');

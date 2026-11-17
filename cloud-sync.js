@@ -307,7 +307,7 @@ const TankCloud=(()=>{
   document.querySelectorAll('[data-profile]').forEach(b=>b.hidden=!permitted(b.dataset.profile));
   const screen=document.getElementById('screen');
   const replacements=[
-   ['Operación de prueba local. Un tanque por registro. Puedes cargar de nuevo tras enviar un lote. Si la cisterna es desconocida, la conciliación queda pendiente. Confirma que el contador físico se ha puesto a cero.','Un tanque por registro. Los cambios se guardan en el móvil y se sincronizan automáticamente. Confirma que el contador físico se ha puesto a cero.'],
+   ['Operación de prueba local. Un tanque por registro. Puedes cargar de nuevo tras enviar un lote. Si la cisterna es desconocida, la conciliación queda pendiente. ','Un tanque por registro. Los cambios se guardan en el móvil y se sincronizan automáticamente.'],
    ['La v1 registra los movimientos y conserva los saldos locales. El Excel diario se genera desde Más → Enviar jornada. El tiempo real queda pendiente.','El movimiento se comparte automáticamente con Reparto y Gerencia cuando hay conexión.'],
    ['Las correcciones y los reinicios se anotan en el historial local. Puedes generar el Excel diario desde Más → Enviar jornada. Solo datos de prueba.','Las correcciones y los reinicios se conservan y se sincronizan automáticamente.'],
    ['Confirmar carga de prueba','Confirmar carga'],['Visitas cerradas · pendientes de envío','Visitas cerradas · correcciones'],
