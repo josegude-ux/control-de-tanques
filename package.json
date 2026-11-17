@@ -1,7 +1,7 @@
 {
   "name": "control-de-tanques",
   "private": true,
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "PWA Control de Tanques — tests locales (sin desplegar)",
   "scripts": {
     "test": "node --test tests/sync-core.test.js tests/fase-a.test.js tests/fase-b-staging.test.js tests/fase-c-resilience.test.js tests/fase-c-idb.test.js",

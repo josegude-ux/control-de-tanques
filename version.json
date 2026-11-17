@@ -1,1 +1,1 @@
-{"version":"0.10.1","notes":"Fase A: seguridad de inventario, ajuste solo Gerencia, sync con reintentos y cola conservada."}
+{"version":"0.10.2","notes":"Sincronización más robusta: reintentos automáticos y pendientes conservados al cambiar permisos."}
