@@ -11,7 +11,7 @@ sudo -u postgres dropdb --if-exists "$DB"
 sudo -u postgres createdb "$DB"
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -c "ALTER DATABASE $DB OWNER TO postgres;"
 
-run() { sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" -f "$1"; }
+run() { sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB" < "$1"; }
 
 echo "==> Stub auth"
 run "$ROOT/tests/sql/isolated-auth-stub.sql"

@@ -102,8 +102,10 @@ test('7. cuenta desactivada: retryAfterGate conserva pendientes y no empuja',()=
  assert.equal(plan.keepPending,true);
  assert.equal(plan.reason,'deactivated');
  const offline=C.retryAfterGate({busy:false,online:false,active:true,stopped:false,editingTab:true,pendingCount:2});
- assert.equal(offline.action,'retry');
- assert.equal(offline.ms,5000);
+ assert.equal(offline.action,'idle');
+ assert.equal(offline.ms,null);
+ assert.equal(offline.keepPending,true);
+ assert.equal(offline.reason,'offline-wait-event');
  const busy=C.retryAfterGate({busy:true,online:true,active:true,stopped:false,editingTab:true,pendingCount:1});
  assert.equal(busy.action,'defer');
 });
