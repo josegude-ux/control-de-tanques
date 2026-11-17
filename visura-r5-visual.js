@@ -9,7 +9,15 @@ const customerList=s=>{
  if(!rows.length)return '<p class="v23-note">Sin establecimientos en el catálogo LAB.</p>';
  return '<div class="v28-list"><h3>Establecimientos del catálogo R5</h3>'+rows.slice(0,12).map(c=>'<article class="v28-customer"><strong>'+esc(c?.nombre||'Sin nombre')+'</strong><span>'+esc(c?.poblacion||'Población no indicada')+'</span><small>Sin medición de nivel asociada</small></article>').join('')+'</div>';
 };
-const clients=s=>'<section class="v23 visura-interior-r6" aria-label="Descargas"><button data-visura="back">← Volver al inicio</button><h2>Descargas</h2><p class="v23-note">Referencia visual; sin niveles reales de clientes.</p><img class="visura-interior-hero" src="assets/descargas-aprobada.png" alt="Descargas: camión Bodega Mahou suministrando a los tanques Mahou del cliente">'+customerList(s)+(s?.role==='gerencia'&&authorized(s)?'<div class="v25-actions"><button data-page="clientes">Abrir clientes</button><button data-page="planificacion">Abrir planificación</button></div>':'')+'</section>';
+const clientActions=s=>{
+ if(!authorized(s))return '';
+ const b=[];
+ if(['reparto','gerencia'].includes(s?.role))b.push('<button data-page="visita">Ir a descarga</button>');
+ if(s?.role==='gerencia')b.push('<button data-page="clientes">Abrir clientes</button>','<button data-page="planificacion">Abrir planificación</button>');
+ b.push('<button data-page="historial">Historial</button>');
+ return '<div class="v25-actions">'+b.join('')+'</div>';
+};
+const clients=s=>'<section class="v23 visura-interior-r6" aria-label="Descargas"><button data-visura="back">← Volver al inicio</button><h2>Descargas</h2><p class="v23-note">Referencia visual; sin niveles reales de clientes.</p><img class="visura-interior-hero" src="assets/descargas-aprobada.png" alt="Descargas: camión Bodega Mahou suministrando a los tanques Mahou del cliente">'+customerList(s)+clientActions(s)+'</section>';
 const loads=s=>{
  const values=s?.tanks?.[s.vehicle], problems=s?.cloudStockProblems||[];
  const demo=cloud?.canOperate?.()===false;
