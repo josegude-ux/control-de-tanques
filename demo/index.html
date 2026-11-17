@@ -9,11 +9,12 @@
 <link rel="icon" href="../Control_de_Tanques_icon_512.png" type="image/png">
 <link rel="apple-touch-icon" href="../Control_de_Tanques_icon_512.png">
 <link rel="stylesheet" href="../styles.css?v=0.10.1">
+<link rel="stylesheet" href="assistant-a.css?v=1">
 <title>Control de Tanques · DEMO staging</title>
 </head>
 <body>
 <header class="top"><div class="brand"><div class="brand-logo-wrap"><img class="brand-logo" src="../mahou-logo.png" alt="Mahou" width="40" height="40"><span class="logo-fallback" aria-hidden="true">Mahou</span></div><div><small>MAHOU · DEMO STAGING</small><h1>Control de Tanques</h1></div></div><div class="role-switch"><button id="roleButton" class="pill" type="button" aria-expanded="false" aria-controls="rolePicker">Reparto ▾</button><div id="rolePicker" class="role-picker" role="group" aria-label="Cambiar perfil de demostración" hidden><button type="button" data-profile="almacen">Almacén</button><button type="button" data-profile="gerencia">Gerencia</button><button type="button" data-profile="reparto">Reparto</button></div></div></header>
-<div class="demo-banner">DEMO STAGING · DATOS FICTICIOS · NO PRODUCCIÓN</div>
+<div class="demo-banner">DEMO STAGING · ASISTENTE A · DATOS FICTICIOS · NO PRODUCCIÓN</div>
 <section class="screen" style="padding-bottom:0"><div class="card"><p id="cloudBadge" role="status">Iniciando DEMO…</p><button id="cloudForce" class="btn secondary" data-cloud="force">Sincronizar ahora</button><button class="btn secondary" data-cloud="settings">Cuenta</button></div></section>
 <main id="screen" class="screen" aria-live="polite"></main>
 <nav class="nav" aria-label="Navegación principal"><button data-page="inicio" class="active"><span>⌂</span>Inicio</button><button data-page="carga"><span>⇧</span>Carga</button><button data-page="visita"><span>♧</span>Descarga</button><button data-page="historial"><span>◷</span>Historial</button><button data-page="admin"><span>⚙</span>Más</button></nav>
@@ -29,5 +30,6 @@
 <script src="../sync-core.js?v=0.10.1" defer></script>
 <script src="../cloud-sync.js?v=0.10.1" defer></script>
 <script src="../app.js?v=0.10.1" defer></script>
+<script src="assistant-a.js?v=1" defer></script>
 </body>
 </html>

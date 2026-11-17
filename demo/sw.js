@@ -1,7 +1,7 @@
 // Service worker DEMO staging — scope /demo/. No comparte caché con producción.
-const CACHE='control-tanques-staging-v0101-connected';
+const CACHE='control-tanques-staging-v0101-assistente-a-1';
 const FILES=[
- './','./index.html','./config.js','./manifest.webmanifest',
+ './','./index.html','./config.js','./manifest.webmanifest','./assistant-a.css?v=1','./assistant-a.js?v=1',
  '../supabase-2.57.4.js','../sync-core.js?v=0.10.1','../cloud-sync.js?v=0.10.1','../app.js?v=0.10.1',
  '../styles.css?v=0.10.1','../xlsx-local.js?v=0.10.1','../xlsx-import-local.js?v=0.10.1',
  '../xlsx-transfer-local.js?v=0.10.1','../plan-import-local.js?v=0.10.1',

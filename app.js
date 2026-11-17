@@ -2,7 +2,7 @@
 // Versión 0.9.6: existencias iniciales provisionales y conciliación pendiente (demo).
 // TankConfig (demo/staging) aísla IndexedDB respecto a producción.
 const STORE=(typeof window!=='undefined'&&window.TankConfig&&window.TankConfig.idbName)||'cdt_demo_v1';
-const APP_VERSION='0.10.1';
+const APP_VERSION='0.10.2';
 const litres=n=>{const v=Math.round(Number(n)*100)/100;return Number.isFinite(v)?v:NaN;};
 let formBusy=false;
 const UPDATE_CHECK_MS=6*60*60*1000;
