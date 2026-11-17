@@ -205,7 +205,6 @@ function contentType(file){
   assert.deepEqual(await alm.page.evaluate(()=>state.tanks.camion),[200,100,0]);
   await alm.page.locator('[data-act=go-carga]').click();
   await alm.page.locator('#loadLiters').fill('80');
-  await alm.page.locator('#zeroLoad').check();
   await alm.page.locator('#loadForm button[type=submit]').click();
   await waitSynced(alm.page);
   assert.equal(await alm.page.evaluate(()=>state.tanks.camion[0]),280);
@@ -215,7 +214,6 @@ function contentType(file){
   await rep.page.waitForFunction(()=>state.tanks.camion[0]===280);
   await rep.page.locator('[data-act=go-visita]').click();
   await rep.page.locator('#extraClient').fill('Bar Ficticio');
-  await rep.page.locator('#extraZero').check();
   await rep.page.locator('#extraVisitForm button').click();
   await rep.page.locator('#destTank').selectOption('1');
   await rep.page.locator('#reading').fill('30');
@@ -279,7 +277,7 @@ function contentType(file){
    pending:Object.keys(TankCloud.meta().pending).length,
    store:STORE
   }));
-  await rep.page.goto(ORIGIN+'/?app_version=0.10.3&reparacion=test');
+  await rep.page.goto(ORIGIN+'/?app_version=0.10.4&reparacion=test');
   await rep.page.waitForFunction(()=>typeof TankCloud!=='undefined');
   // Session en localStorage; si el panel de login aparece, reconectar.
   if(await rep.page.locator('#cloudLoginForm').isVisible().catch(()=>false)){
@@ -298,7 +296,7 @@ function contentType(file){
   }));
   assert.equal(after.store,before.store,'mismo IndexedDB STORE');
   assert.equal(after.tank,225);
-  assert.equal(after.version,'0.10.3');
+  assert.equal(after.version,'0.10.4');
   // SW no debe borrar datos: verificar que sw.js no usa indexedDB API
   const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
   assert.equal(/\bindexedDB\s*\./.test(sw),false);

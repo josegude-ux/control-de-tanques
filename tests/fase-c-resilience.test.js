@@ -77,7 +77,7 @@ test('Fase C: un movimiento compartido NO expone cliente, destino ni identificad
  assert.equal(movement.payload.litres,25);
 });
 
-test('Fase C: cambio de vehículo retiene pendientes antiguos sin transmitirlos ni borrarlos',()=>{
+test('Fase C: cambio de vehículo envía los pendientes propios de ambos vehículos sin borrarlos',()=>{
  const m=C.empty(),owner='repartidor-1';
  const ownVisit={key:'visit:camion1',kind:'visit',vehicle:'camion',owner_id:owner,payload:{id:'camion1',client:'Ficticio'}};
  const ownDischarge={key:'movement:car-d',kind:'movement',vehicle:'camion',owner_id:owner,payload:{id:'car-d',type:'DESCARGA',visitId:'camion1'}};
@@ -85,7 +85,7 @@ test('Fase C: cambio de vehículo retiene pendientes antiguos sin transmitirlos 
  for(const r of [ownVisit,ownDischarge,oldVan])m.pending[r.key]=r;
  const member={active:true,role:'reparto',vehicle:'camion'};
  const selected=C.batch(m,500,{skipConflicts:true,allowRecord:r=>C.permittedPending(r,member,owner)});
- assert.deepEqual(selected.map(x=>x.key),['visit:camion1','movement:car-d']);
+ assert.deepEqual(selected.map(x=>x.key),['visit:camion1','movement:car-d','visit:van1']);
  assert.equal(Object.keys(m.pending).length,3);
  assert.ok(m.pending['visit:van1'],'no se descarta un pendiente de otro vehículo');
  assert.equal(C.permittedPending({...ownVisit,owner_id:'otro'},member,owner),false);
@@ -106,7 +106,7 @@ test('Fase C: operaciones de perfil revocado no contaminan existencias ni vistas
  assert.ok(m.pending[revoked.key],'registro pendiente sigue guardado');
  const cloud=fs.readFileSync(path.join(__dirname,'..','cloud-sync.js'),'utf8');
  assert.match(cloud,/applyBalances\(stagedState,visible\)/);
- assert.match(cloud,/if\(member\?\.role==='reparto'\)stagedState\.vehicle=member\.vehicle;\s*C\.hydrate\(visible,stagedState,account\)/);
+ assert.match(cloud,/stagedState\.vehicle=member\.vehicle\|\|'camion';\s*C\.hydrate\(visible,stagedState,account\)/);
 });
 
 test('Fase C: aislamiento entre aplicación DEMO y original para bloqueo, caché de usuario y perfiles',()=>{
@@ -185,7 +185,7 @@ test('Fase C: pendientes de usuario revocado no se envían, pero otra visita ind
  m.conflicts={'movement:bad':{key:'movement:bad',revision:2}};
  const member={active:true,role:'reparto',vehicle:'camion'};
  const batch=C.batch(m,500,{skipConflicts:true,allowRecord:r=>C.permittedPending(r,member,'test-user')});
- assert.deepEqual(batch.map(r=>r.key).sort(),['movement:good','visit:good']);
+ assert.deepEqual(batch.map(r=>r.key).sort(),['movement:good','movement:van','visit:good']);
  assert.ok(m.pending['movement:bad']);
  assert.ok(m.pending['movement:van']);
 });
@@ -203,7 +203,8 @@ test('Fase C: nuevo rol no vuelve a enviar acciones que ya no están permitidas'
  assert.equal(C.permittedPending(load,Almacen,'test-user'),true);
  assert.equal(C.permittedPending(delivery,Almacen,'test-user'),false);
  assert.equal(C.permittedPending(delivery,Camion,'test-user'),true);
- assert.equal(C.permittedPending(delivery,Furgoneta,'test-user'),false);
+ assert.equal(C.permittedPending(delivery,Furgoneta,'test-user'),true,'cualquier repartidor puede llevar cualquier vehículo');
+ assert.equal(C.permittedPending({...delivery,vehicle:'otro'},Camion,'test-user'),false);
  assert.equal(C.permittedPending(load,Camion,'test-user'),false);
  assert.equal(C.permittedPending(delivery,{...Camion,active:false},'test-user'),false);
 });

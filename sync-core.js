@@ -32,9 +32,8 @@
      add('movement',d.id,{id:d.id,type:'DESCARGA',vehicle:v.vehicle,tank:d.source+1,litres:litres(d.liters),loss:0,time:d.at,visitId:v.id,cancelled:!!v.cancelledAt},v.vehicle,false);
     }
    }
-   // Solo provisionales del vehículo asignado (evita reenviar los de otro móvil).
+   // Provisionales de ambos vehículos: cambiar de vehículo no debe interpretarse como borrado.
    for(const p of s.provisionalHistory||[]){
-    if(s.vehicle&&p.vehicle&&p.vehicle!==s.vehicle)continue;
     add('provisional',p.id,p,p.vehicle);
    }
   }
@@ -123,7 +122,8 @@
   const p=row.payload||{};
   if(member.role==='almacen')return row.kind==='movement'&&p.type==='CARGA';
   if(member.role==='reparto'){
-   if(!member.vehicle||row.vehicle!==member.vehicle)return false;
+   // Cualquier repartidor puede llevar camión o furgoneta.
+   if(!['camion','furgoneta'].includes(row.vehicle))return false;
    return row.kind==='visit'||row.kind==='provisional'
     ||(row.kind==='movement'&&p.type==='DESCARGA');
   }
@@ -215,7 +215,6 @@
   }
   s.stockAdjustmentHistory=get('adjustment').sort((a,b)=>a.at.localeCompare(b.at));s.stockAdjustment=s.stockAdjustmentHistory.at(-1)||null;
   let provis=get('provisional');
-  if(s.role==='reparto'&&s.vehicle)provis=provis.filter(p=>p.vehicle===s.vehicle);
   s.provisionalHistory=provis;s.provisionalOpenings={};for(const p of s.provisionalHistory)s.provisionalOpenings[p.vehicle]=p;
   const opening=get('opening')[0];
   s.manager??={journals:{},movements:{},incidents:[]};s.manager.opening=opening;

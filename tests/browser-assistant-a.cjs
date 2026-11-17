@@ -68,7 +68,6 @@ async function main() {
   assert.equal(await page.locator('#loadLiters').inputValue(),'120');
   accepted.push('Carga 2/3: introducir litros y volver sin perder los datos');
   await page.locator('[data-guide=next]').click();
-  await page.locator('#zeroLoad').check();
   await page.locator('#loadForm button[type=submit]').click();
   await page.waitForFunction(()=>state.loads.length===1);
   assert.equal(await page.evaluate(()=>state.tanks.camion[0]),270);
@@ -80,7 +79,6 @@ async function main() {
   await page.locator('[data-guide=extra]').click();
   assert.equal(await page.locator('#extraClient').isVisible(),true);
   await page.locator('#extraClient').fill('Cliente de prueba');
-  await page.locator('#extraZero').check();
   await page.locator('#extraVisitForm button[type=submit]').click();
   await page.waitForFunction(()=>!!state.openVisit);
   accepted.push('Reparto: elección no planificada e inicio de visita');
