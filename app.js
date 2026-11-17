@@ -97,7 +97,8 @@ const persist=async()=>{await write();render()};
 const toast=t=>{if(TankCloud.connected())t=t.replaceAll('ficticia','').replaceAll(' (DEMO)','').replaceAll('Genera un nuevo lote Excel para Gerencia.','Se sincronizará automáticamente.');const e=el('toast');e.textContent=t;e.style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>e.style.display='none',3500)};
 const card=(body)=>`<div class="card">${body}</div>`;
 const action=(text,act,secondary=false)=>`<button class="btn ${secondary?'secondary':''}" data-act="${act}">${text}</button>`;
-const roleNames={almacen:'Almacén',reparto:'Reparto',gerencia:'Gerencia'};
+// Nombres visibles desde TankRoles (única fuente). El rol interno sigue siendo 'gerencia'.
+const roleNames=TankRoles.ROLE_LABELS;TankRoles.installLabels();
 function navbar(){el('roleButton').textContent=roleNames[state.role]+' ▾';document.querySelectorAll('[data-profile]').forEach(b=>{b.classList.toggle('selected',b.dataset.profile===state.role);b.setAttribute('aria-pressed',String(b.dataset.profile===state.role))});const allowed=state.role==='almacen'?['inicio','carga','historial','admin']:state.role==='reparto'?['inicio','visita','historial','recibir-plan','admin']:['inicio','carga','visita','historial','gerencia','clientes','planificacion','admin'];document.querySelectorAll('[data-page]').forEach(b=>{b.hidden=!allowed.includes(b.dataset.page);b.classList.toggle('active',b.dataset.page===state.page)})}
 function home(){
  if(!TankCloud.connected())return '<section class="visura-demo-panel" aria-label="Datos de demostración"><div class="visura-demo-heading"><span>DATOS DE DEMOSTRACIÓN</span><small>Sin sesión conectada · saldos ficticios que permanecen en este dispositivo</small></div>'+legacyHome()+'</section>';

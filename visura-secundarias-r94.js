@@ -2,7 +2,8 @@
 (()=>{'use strict';
  const root=document.getElementById('screen'),nav=document.querySelector('nav.nav');
  if(!root||!nav)return;
- const types=new Map([['Carga','load'],['Carga de Gerencia (demo)','load'],['Descarga','unload'],['Visita cerrada','unload'],['Corrección de descarga','audit'],['Reinicio excepcional del contador','audit'],['Visita reabierta','audit'],['Visita de prueba eliminada','audit'],['Anulación pendiente de comunicar','audit'],['Ajuste de existencias · Gerencia','audit']]);
+ const label=t=>window.TankRoles?TankRoles.relabel(t):t;
+ const types=new Map([['Carga','load'],['Carga de Gerencia (demo)','load'],['Descarga','unload'],['Visita cerrada','unload'],['Corrección de descarga','audit'],['Reinicio excepcional del contador','audit'],['Visita reabierta','audit'],['Visita de prueba eliminada','audit'],['Anulación pendiente de comunicar','audit'],['Ajuste de existencias · Gerencia','audit']].map(([k,v])=>[label(k),v]));
  function apply(){
   const page=nav.querySelector('button[data-page].active')?.dataset.page;
   root.classList.toggle('vr94-history',page==='historial');
@@ -13,7 +14,7 @@
    const title=row?.querySelector(':scope > b');
    if(!title||!row.querySelector(':scope > .tag'))continue;
    card.classList.add('vr94-movement');
-   card.dataset.vr94Kind=types.get(title.textContent.trim())||'other';
+   card.dataset.vr94Kind=types.get(label(title.textContent.trim()))||'other';
   }
  }
  new MutationObserver(apply).observe(root,{childList:true});
