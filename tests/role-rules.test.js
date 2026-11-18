@@ -30,3 +30,20 @@ test('Sin visita abierta no hay bloqueo',()=>{
 test('Reparto con descarga abierta queda anclado a su vehículo en el selector de carga',()=>{
  assert.equal(R.openVisitLocksLoadVehicle({role:'reparto',vehicle:'camion',openVisit:open}),true);
 });
+
+test('Etiqueta visible de gerencia: Operaciones (rol interno sin cambios)',()=>{
+ assert.equal(R.roleLabel('gerencia'),'Operaciones');
+ assert.equal(R.roleLabel('almacen'),'Almacén');
+ assert.equal(R.roleLabel('reparto'),'Reparto');
+ assert.ok('gerencia' in R.ROLE_LABELS,'la clave interna sigue siendo gerencia');
+ assert.equal(R.roleLabel('otro'),'otro');
+});
+
+test('relabel: textos heredados y del historial guardado',()=>{
+ assert.equal(R.relabel('Solo Gerencia puede ajustar existencias'),'Solo Operaciones puede ajustar existencias');
+ assert.equal(R.relabel('Ajuste de existencias · Gerencia'),'Ajuste de existencias · Operaciones');
+ assert.equal(R.relabel('PENDIENTE DE GERENCIA'),'PENDIENTE DE OPERACIONES');
+ assert.equal(R.relabel('rol gerencia interno'),'rol gerencia interno','minúsculas (claves internas) intactas');
+ assert.equal(R.relabel('Gerencial'),'Gerencial','solo palabra completa');
+ assert.equal(R.relabel(''),'');assert.equal(R.relabel(null),null);
+});
