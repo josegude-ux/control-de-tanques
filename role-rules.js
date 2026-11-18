@@ -67,6 +67,16 @@
   for(const name of ['alert','confirm','prompt']){const orig=window[name].bind(window);window[name]=(msg,...rest)=>orig(relabel(msg),...rest);}
  }
 
- const api={ROLE_LABELS,roleLabel,relabel,relabelTree,labelCloudRoles,installLabels,openVisitBlocksLoad,openVisitLocksLoadVehicle};
+ /** Carga y Descarga: Operaciones (rol interno 'gerencia') tiene acceso completo. */
+ function canLoad(s){return s?.role==='almacen'||s?.role==='gerencia';}
+ function canDischarge(s){return s?.role==='reparto'||s?.role==='gerencia';}
+ /** Conectado, Operaciones ve visitas de todos: solo puede reabrir/continuar las suyas.
+     ownVisitIds lo rellena sync-core.hydrate fuera del payload sincronizado. */
+ function ownsVisit(s,v,connected){
+  if(!v)return false;
+  if(!connected||s?.role!=='gerencia')return true;
+  return (s.ownVisitIds||[]).includes(v.id);
+ }
+ const api={ROLE_LABELS,canLoad,canDischarge,ownsVisit,roleLabel,relabel,relabelTree,labelCloudRoles,installLabels,openVisitBlocksLoad,openVisitLocksLoadVehicle};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.TankRoles=api;
 })(typeof self!=='undefined'?self:this);

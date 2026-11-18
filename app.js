@@ -110,7 +110,7 @@ function home(){
  (state.role!=='reparto'?card('<h3>Cisterna principal</h3><strong class="big">'+fmt(state.cisterna)+' L</strong>'):'')+
  `<label class="field">Vehículo<select id="vehicle"><option value="camion" ${state.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${state.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select></label>`+
  card('<h3>Existencias del vehículo</h3>'+tanks.map((n,i)=>`<div class="row"><b>Tanque ${i+1}</b><strong>${fmt(n)} / 1.000 L</strong></div>`).join('')+`<p>Total: <strong>${fmt(tanks.reduce((a,b)=>a+b,0))} L</strong></p><p class="hint">Saldo con los movimientos recibidos y los pendientes de este móvil. Los de otros móviles sin conexión llegarán cuando se conecten.</p>`)+
- (state.role==='almacen'?action('Nueva carga','go-carga'):state.role==='reparto'?action(state.openVisit?'Continuar descarga':'Nueva descarga','go-visita'):card(action('Saldos y movimientos','go-gerencia')+action('Clientes','go-clientes')+action('Planificación','go-planificacion')));
+ (state.role==='almacen'?action('Nueva carga','go-carga'):state.role==='reparto'?action(state.openVisit?'Continuar descarga':'Nueva descarga','go-visita'):card(action('Nueva carga','go-carga')+action(state.openVisit?'Continuar descarga':'Nueva descarga','go-visita'))+card(action('Saldos y movimientos','go-gerencia')+action('Clientes','go-clientes')+action('Planificación','go-planificacion')));
 }
 function legacyHome(){const tanks=state.tanks[state.vehicle];let txt=`<div class="home-logo-preview"><img src="logo-control-tanques.png" alt="Control de Tanques Mahou" loading="eager"></div><h2 class="heading">${state.role==='almacen'?'Almacén':state.role==='reparto'?'Mi vehículo':'Panel de pruebas'}</h2><div class="notice">Datos ficticios guardados localmente por perfil. Cada perfil usa su propio registro; NO existe autenticación real.</div>`;
 if(state.role==='almacen'||state.role==='gerencia')txt+=card(`<h3>Cisterna principal</h3><div class="big mono">${state.role==='almacen'&&state.stockAdjustment?.cisternKnown===false?'Pendiente de confirmar':fmt(state.cisterna)+' L'}</div><p class="muted tiny">Capacidad nominal 25.000 L · saldo de demostración</p>`);
@@ -118,6 +118,7 @@ txt+=`<label class="field">Vehículo<select id="vehicle" class="select"><option 
 txt+=card(`<h3>Existencias ${state.vehicle==='camion'?'del camión':'de la furgoneta'}</h3>${tanks.map((v,i)=>`<div class="tank-line"><div class="row"><b>Tanque ${i+1}</b><strong class="mono">${fmt(v)} / 1.000 L</strong></div><div class="meter"><div style="width:${v/10}%"></div></div></div>`).join('')}<div class="divider"></div><div class="row"><b>Total disponible</b><strong class="big mono">${fmt(tanks.reduce((a,b)=>a+b,0))} L</strong></div>`);
 if(state.role==='almacen')txt+=action('Nueva carga de prueba','go-carga');
 if(state.role==='reparto'){txt+=provisionalFor(state.vehicle)?'<div class="notice">Existencias PROVISIONALES · pendientes de Gerencia.</div>':'';txt+=action(state.openVisit?'Continuar descarga':'Nueva descarga de prueba','go-visita');}
+if(state.role==='gerencia')txt+=action('Nueva carga de prueba','go-carga')+action(state.openVisit?'Continuar descarga':'Nueva descarga de prueba','go-visita');
 if(state.role==='gerencia')txt+=card('<h3>Gerencia · importación de pruebas</h3><p>Puedes importar Excel de jornada sin modificar las existencias de demostración.</p>'+action('Abrir importaciones','go-gerencia')+'<p class="hint">La sincronización entre PC y móvil y los permisos reales siguen pendientes.</p>');
 return txt}
 function loadPage(){let tanks=state.tanks[state.vehicle];return `<h2 class="heading">Carga individual</h2><div class="notice">Operación de prueba local. Un tanque por registro. Puedes cargar de nuevo tras enviar un lote. Si la cisterna es desconocida, la conciliación queda pendiente.</div><form id="loadForm" class="form"><label class="field">Vehículo<select id="loadVehicle"><option value="camion" ${state.vehicle==='camion'?'selected':''}>Camión</option><option value="furgoneta" ${state.vehicle==='furgoneta'?'selected':''}>Furgoneta</option></select></label><label class="field">Tanque del vehículo<select id="loadTank">${tanks.map((v,i)=>`<option value="${i}">Tanque ${i+1} · ${fmt(v)} L disponibles</option>`).join('')}</select></label><label class="field">Destino del sobrante<select id="residual"><option value="mantener">Conservar el sobrante</option><option value="desechar">Desechar sobrante como merma</option></select></label><label class="field">Lectura final del contador (litros cargados)<input id="loadLiters" inputmode="decimal" type="number" min="0.01" step="0.01" required placeholder="Ej. 200" /></label><button class="btn" type="submit">Confirmar carga de prueba</button><button class="btn secondary" type="button" data-act="leave-load">Salir sin registrar carga</button></form><p class="hint">La v1 registra los movimientos y conserva los saldos locales. El Excel diario se genera desde Más → Enviar jornada. El tiempo real queda pendiente.</p>`}
@@ -166,7 +167,8 @@ async function beginDelivery(entry,client,reason,customerId=null,physicalConfirm
  if(selected&&(!tanks||!physicalConfirmed))return toast('Comprueba físicamente el establecimiento y sus depósitos antes de iniciar la descarga');
  if(selected)client=selected.nombre;
  if(!TankCloud.canOperate())return;
- if(state.role!=='reparto'||state.openVisit)return toast('Ya hay una descarga abierta');
+ if(!TankRoles.canDischarge(state))return toast('Perfil sin acceso a Descarga');
+ if(state.openVisit)return toast('Ya hay una descarga abierta');
  state.openVisit={id:uid(),client,vehicle:state.vehicle,started:now(),reading:0,segment:0,resets:[],corrections:[],lastSource:0,discharges:[],planEntryId:entry?.id||null,plannedLiters:entry?.liters||0,plannedDate:entry?.date||null,unplannedReason:reason||null,...(selected?{customerId:selected.id,customerTown:selected.poblacion||'',customerTanks:tanks,customerCatalogConfirmedAt:now()}: {})};
  await persist();
 }
@@ -190,6 +192,7 @@ function reopenList(){
 }
 function canReopen(v){
  if(!v||!v.ended||state.openVisit||v.sentAt)return false;
+ if(!TankRoles.ownsVisit(state,v,TankCloud.connected()))return false;
  const laterVisit=state.visits.some(x=>x.id!==v.id&&x.vehicle===v.vehicle&&x.started>v.ended);
  const laterLoad=state.loads.some(x=>x.vehicle===v.vehicle&&x.at>v.ended);
  return !laterVisit&&!laterLoad;
@@ -867,7 +870,7 @@ function reportsPage(){
 }
 async function downloadReport(){
  const rep=currentReport();if(!rep)return toast('Necesitas una cuenta activa');
- const bytes=window.TankReportPDF.renderReport(rep,window.TankReport),name=window.TankReport.fileName(rep.date);
+ const bytes=window.TankReportPDF.renderReport(rep,window.TankReport),name=window.TankReport.fileName(rep.date,rep.vehicleId);
  const file=new File([bytes],name,{type:'application/pdf'});
  try{if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:rep.title});return;}}
  catch(err){if(err?.name==='AbortError')return;console.warn(err);}

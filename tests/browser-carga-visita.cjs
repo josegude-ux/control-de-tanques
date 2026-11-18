@@ -102,7 +102,9 @@ function mockFor(user){
  // Gerencia recibe la visita abierta del conductor y aun así puede cargar
  await ger.page.locator('[data-page=inicio]').click();
  await ger.page.locator('#cloudForce').click();
- await ger.page.waitForFunction(()=>state.openVisit?.vehicle==='camion');
+ // Recibe la visita abierta del conductor, pero no la toma como propia (solo continúa las suyas).
+ await ger.page.waitForFunction(()=>Object.values(TankCloud.meta().rows).some(r=>r.kind==='visit'&&!r.payload.ended&&r.vehicle==='camion'));
+ assert.equal(await ger.page.evaluate(()=>state.openVisit),null);
  await ger.page.evaluate(()=>navigate('carga'));
  assert.equal(await ger.page.evaluate(()=>state.page),'carga','Gerencia debe entrar en Nueva carga');
  assert.notEqual(await toastText(ger.page),'Finaliza primero la visita en curso');

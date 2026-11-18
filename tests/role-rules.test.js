@@ -47,3 +47,18 @@ test('relabel: textos heredados y del historial guardado',()=>{
  assert.equal(R.relabel('Gerencial'),'Gerencial','solo palabra completa');
  assert.equal(R.relabel(''),'');assert.equal(R.relabel(null),null);
 });
+
+test('Operaciones tiene acceso completo a Carga y Descarga',()=>{
+ assert.equal(R.canLoad({role:'gerencia'}),true);assert.equal(R.canDischarge({role:'gerencia'}),true);
+ assert.equal(R.canLoad({role:'almacen'}),true);assert.equal(R.canDischarge({role:'almacen'}),false);
+ assert.equal(R.canLoad({role:'reparto'}),false);assert.equal(R.canDischarge({role:'reparto'}),true);
+});
+
+test('ownsVisit: conectada, Operaciones solo opera sus propias visitas',()=>{
+ const v={id:'v1'};
+ assert.equal(R.ownsVisit({role:'gerencia',ownVisitIds:['v1']},v,true),true);
+ assert.equal(R.ownsVisit({role:'gerencia',ownVisitIds:['v2']},v,true),false);
+ assert.equal(R.ownsVisit({role:'gerencia'},v,false),true,'demo local: todo es propio');
+ assert.equal(R.ownsVisit({role:'reparto'},v,true),true,'Reparto ya solo recibe las suyas');
+ assert.equal(R.ownsVisit({role:'gerencia'},null,true),false);
+});
