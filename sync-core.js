@@ -13,13 +13,14 @@
  function extract(s){
   const out={};
   const add=(kind,id,payload,vehicle=null,deleted=false)=>{const key=kind+':'+id;out[key]={key,kind,payload:copy(payload),vehicle,deleted};};
-  if(s.role==='almacen'){
+  // Operaciones (rol interno 'gerencia') tiene acceso completo a Carga y Descarga: emite como Almacén y como Reparto.
+  if(s.role==='almacen'||s.role==='gerencia'){
    for(const l of s.loads||[]){
     if(!Number.isInteger(l.index)||l.index<0)continue;
     add('movement',l.id,{id:l.id,type:'CARGA',vehicle:l.vehicle,tank:l.index+1,litres:litres(l.amount),loss:litres(l.merma||0),time:l.at,cisternPending:!!l.cisternPending},l.vehicle);
    }
   }
-  if(s.role==='reparto'){
+  if(s.role==='reparto'||s.role==='gerencia'){
    for(const v of [...s.visits||[],...s.openVisit?[s.openVisit]:[]]){
     // Anulación conserva descargas en el saldo hasta conciliación de Gerencia (no tombstone automático).
     add('visit',v.id,v,v.vehicle);
@@ -191,8 +192,12 @@
    .map(m=>({id:m.id,vehicle:m.vehicle,index:m.tank-1,amount:litres(m.litres),merma:litres(m.loss),at:m.time,cisternPending:m.cisternPending}));
   s.loads=s.role==='reparto'?[]:loads;
   // Visitas: Gerencia todas; Reparto solo las propias (no las de otro vehículo/conductor).
-  const visits=rows.filter(r=>r.kind==='visit'&&(s.role==='gerencia'||r.owner_id===user)).map(r=>copy(r.payload));
-  s.visits=visits.filter(v=>v.ended);const open=visits.filter(v=>!v.ended&&!v.cancelledAt);
+  const visitRows=rows.filter(r=>r.kind==='visit'&&(s.role==='gerencia'||r.owner_id===user));
+  s.visits=visitRows.map(r=>copy(r.payload)).filter(v=>v.ended);
+  // Descarga en curso: SOLO la propia. Gerencia ve visitas de todos, pero nunca continúa la de otro conductor.
+  const open=visitRows.filter(r=>r.owner_id===user&&!r.payload.ended&&!r.payload.cancelledAt).map(r=>copy(r.payload));
+  // Visitas propias (fuera del payload: no se sincroniza). Permite a Operaciones reabrir solo las suyas.
+  s.ownVisitIds=visitRows.filter(r=>r.owner_id===user).map(r=>r.payload.id);
   s.openVisit=open.find(v=>v.id===s.openVisit?.id)||open[0]||null;
   s.customers=get('customer');
   // Planes: filas por vehículo (plan:SEMANA|vehiculo) o legado plan:SEMANA (solo Gerencia vía RLS).

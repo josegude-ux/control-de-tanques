@@ -197,6 +197,8 @@ function contentType(file){
   await ger.page.locator('#openingCamion2').fill('0');
   await ger.page.locator('#openingFurgoneta').fill('50');
   await ger.page.locator('#openingForm button').click();
+  // El guardado es asíncrono: esperar a que la apertura llegue al servidor antes de comprobarla.
+  await ger.page.waitForFunction(()=>!!TankCloud.meta().rows['opening:global']);
   await waitSynced(ger.page);
   assert.equal(rows.get('opening:global').payload.camion[0],200);
 

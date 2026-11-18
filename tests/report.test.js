@@ -112,3 +112,12 @@ test('Título del informe general con la etiqueta Operaciones',()=>{
  assert.equal(r.title,'Informe general — Operaciones');
  assert.ok(!JSON.stringify(r).includes('Gerencia'));
 });
+
+test('Informe diario por vehículo: solo ese vehículo y archivo propio',()=>{
+ const r=R.buildDailyReport(day,{...base,scope:'gerencia',vehicle:'camion'});
+ assert.equal(r.vehicleId,'camion');assert.equal(r.vehicleFilter,'Camión');
+ assert.ok(r.vehicles.every(v=>v.id==='camion'));
+ assert.equal(R.fileName(r.date,r.vehicleId),'VISURA_TANQUES_MOVIMIENTOS_2026-11-17_CAMION.pdf');
+ assert.equal(R.fileName('2026-11-17','furgoneta'),'VISURA_TANQUES_MOVIMIENTOS_2026-11-17_FURGONETA.pdf');
+ assert.equal(R.fileName('2026-11-17','otro'),'VISURA_TANQUES_MOVIMIENTOS_2026-11-17.pdf');
+});
