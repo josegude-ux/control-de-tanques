@@ -59,3 +59,34 @@ test('large queues batch without splitting a visit and its movements',()=>{
 test('conflict resolution keeps a visit and all pending discharges together',()=>{
  const m=C.empty();C.capture(m,{role:'reparto',openVisit:visit},'u');for(const p of Object.values(m.pending))m.rows[p.key]={...p,revision:2};m.conflicts['visit:v1']=m.rows['visit:v1'];C.resolve(m,'visit:v1',true);assert.equal(m.pending['movement:d1'].base,2);assert.equal(Object.keys(m.conflicts).length,0);
 });
+
+// ---- Operaciones (rol interno 'gerencia'): acceso completo a Carga y Descarga
+test('Operaciones emite sus cargas y sus descargas',()=>{
+ const m=C.empty();C.receive(m,[opening]);
+ C.capture(m,{role:'gerencia',loads:[structuredClone(load)],visits:[],openVisit:structuredClone(visit),customers:[],weeklyPlans:{},manager:{},stockAdjustmentHistory:[]},'boss');
+ assert.equal(m.pending['movement:l1'].payload.type,'CARGA');
+ assert.equal(m.pending['visit:v1'].owner_id,'boss');
+ assert.equal(m.pending['movement:d1'].payload.type,'DESCARGA');
+ assert.equal(C.balances(m).balances.camion[0],600);
+});
+test('Operaciones nunca continúa la descarga abierta de otro conductor',()=>{
+ const m=C.empty();
+ const other={...structuredClone(visit),id:'vOther'},mine={...structuredClone(visit),id:'vMine',discharges:[]};
+ C.receive(m,[opening,{key:'visit:vOther',kind:'visit',owner_id:'driver',vehicle:'camion',payload:other,revision:1}]);
+ const s={role:'gerencia'};C.hydrate(m,s,'boss');
+ assert.equal(s.openVisit,null,'la visita abierta del conductor no se toma como propia');
+ assert.deepEqual(s.ownVisitIds,[]);
+ C.receive(m,[{key:'visit:vMine',kind:'visit',owner_id:'boss',vehicle:'camion',payload:mine,revision:1}]);
+ C.hydrate(m,s,'boss');
+ assert.equal(s.openVisit.id,'vMine');assert.deepEqual(s.ownVisitIds,['vMine']);
+});
+test('Operaciones: hidratar no reenvía cargas ni visitas de otros',()=>{
+ const m=C.empty();
+ const ended={...structuredClone(visit),id:'vEnded',ended:'2026-10-23T10:00:00Z'};
+ C.receive(m,[opening,{key:'movement:l1',kind:'movement',owner_id:'worker',vehicle:'camion',payload:{id:'l1',type:'CARGA',vehicle:'camion',tank:1,litres:200,loss:0,time:load.at},revision:1},
+  {key:'visit:vEnded',kind:'visit',owner_id:'driver',vehicle:'camion',payload:ended,revision:1}]);
+ const s={role:'gerencia',customers:[],weeklyPlans:{},manager:{},stockAdjustmentHistory:[]};C.hydrate(m,s,'boss');
+ m.last.gerencia=Object.fromEntries(Object.entries(C.extract(s)).map(([k,r])=>[k,C.signature(r)]));
+ C.capture(m,s,'boss');
+ assert.deepEqual(Object.keys(m.pending),[]);
+});

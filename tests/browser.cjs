@@ -24,11 +24,12 @@ async function mock(route){
  async function device(){const c=await b.newContext({viewport:{width:390,height:844},isMobile:true});await c.route('https://oevetnszmfxeukcncwji.supabase.co/**',mock);const p=await c.newPage();p.setDefaultTimeout(15000);p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());await p.goto(origin);await p.locator('[data-cloud=settings]').first().click();await p.locator('#cloudEmail').fill('test@example.invalid');await p.locator('#cloudPassword').fill('TestPassword123!');await p.locator('#cloudLoginForm button').click();await p.waitForFunction(()=>TankCloud.member()?.active);await p.waitForFunction(()=>!document.getElementById('cloudBadge').textContent.includes('Sincronizando'));return {c,p};}
  const a=await device();console.log('login OK');await a.p.locator('[data-act=go-gerencia]').first().click();
  await a.p.locator('#openingCisterna').fill('10000');for(const i of [0,1,2])await a.p.locator('#openingCamion'+i).fill('0');await a.p.locator('#openingFurgoneta').fill('0');await a.p.locator('#openingForm button').click();
+ await a.p.waitForFunction(()=>!!TankCloud.meta().rows['opening:global']); // guardado asíncrono
  await a.p.waitForFunction(()=>Object.keys(TankCloud.meta().pending).length===0&&state.cloudStockReady);
  console.log('opening OK');assert.equal(rows.get('opening:global').payload.cisterna,10000);
  async function role(p,r){await p.locator('#roleButton').click();await p.locator('[data-profile='+r+']').click();await p.waitForFunction(r=>state.role===r,r);}
  await role(a.p,'almacen');await a.p.locator('[data-act=go-carga]').click();await a.p.locator('#loadLiters').fill('100');await a.p.locator('#loadForm button[type=submit]').click();
- await a.p.waitForFunction(()=>state.loads.length===1&&Object.keys(TankCloud.meta().pending).length===0);
+ await a.p.waitForFunction(()=>state.loads.length===1&&Object.values(TankCloud.meta().rows).some(r=>r.payload?.type==='CARGA')&&Object.keys(TankCloud.meta().pending).length===0);
  console.log('load OK');const d=await device();await role(d.p,'reparto');assert.equal(await d.p.evaluate(()=>state.tanks.camion[0]),100);
  await d.p.locator('[data-act=go-visita]').click();await d.p.locator('#extraClient').fill('Bar de prueba');await d.p.locator('#extraVisitForm button').click();
  await d.p.locator('#destTank').selectOption('1');await d.p.locator('#reading').fill('50');await d.p.locator('#dischargeForm button[type=submit]').click();

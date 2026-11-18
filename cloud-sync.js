@@ -303,7 +303,7 @@ const TankCloud=(()=>{
  function decorate(){
   badge();if(!connected())return;
   document.querySelectorAll('[data-act=export-plan]').forEach(b=>b.hidden=true);
-  document.querySelectorAll('[data-page="carga"],[data-page="visita"]').forEach(b=>{if(state.role==='gerencia')b.hidden=true;});
+  // Operaciones (rol 'gerencia') tiene acceso completo a Carga y Descarga: ya no se ocultan.
   document.querySelectorAll('[data-profile]').forEach(b=>b.hidden=!permitted(b.dataset.profile));
   const screen=document.getElementById('screen');
   const replacements=[

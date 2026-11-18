@@ -84,12 +84,13 @@
   if(all.some(r=>r.kind==='movement'&&!r.deleted&&madridDay(r.payload?.time)===o.date&&vehicles[r.payload?.vehicle||r.vehicle]&&r.payload?.type==='DESCARGA'))notes.push('Corregida: valor vigente tras la corrección. Anulada: pendiente de conciliar; sus litros cuentan hasta el ajuste de '+ops()+'.');
   notes.push('La diferencia es cargas menos descargas del día; no equivale a existencias finales.');
   const title=o.scope==='almacen'?'Informe de cargas — Operario':o.scope==='reparto'?'Informe de descargas — Operario':'Informe general — '+ops();
-  return {title,date:o.date,scope:o.scope,operator:o.operator?author({owner_id:o.operator}):'',vehicleFilter:o.vehicle?VEHICLE_NAMES[o.vehicle]:'',
+  return {title,date:o.date,scope:o.scope,operator:o.operator?author({owner_id:o.operator}):'',vehicleFilter:o.vehicle?VEHICLE_NAMES[o.vehicle]:'',vehicleId:VEHICLE_NAMES[o.vehicle]?o.vehicle:'',
    vehicles:VEHICLES.filter(v=>!o.vehicle||v===o.vehicle).map(v=>vehicles[v]),totals,provisional:reasons.length>0,reasons,notes,
    showLoads:o.scope!=='reparto',showDischarges:o.scope!=='almacen',empty:totals.loadCount+totals.dischargeCount===0,
    generatedAt:o.generatedAt||new Date().toISOString(),cutoff:o.cutoff||null};
  }
- function fileName(date){return `VISURA_TANQUES_MOVIMIENTOS_${date}.pdf`;}
+ /** Con filtro de vehículo, el archivo se distingue del informe general del mismo día. */
+ function fileName(date,vehicle=''){return `VISURA_TANQUES_MOVIMIENTOS_${date}${VEHICLE_NAMES[vehicle]?'_'+String(vehicle).toUpperCase():''}.pdf`;}
  const api={madridDay,madridTime,madridStamp,buildDailyReport,fileName,VEHICLE_NAMES};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.TankReport=api;
 })(typeof self!=='undefined'?self:this);

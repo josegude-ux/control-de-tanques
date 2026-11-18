@@ -8,6 +8,7 @@
     "test:browser": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser.cjs",
     "test:browser:carga-visita": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser-carga-visita.cjs",
     "test:browser:operaciones": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser-operaciones.cjs",
+    "test:browser:operaciones-carga-descarga": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser-operaciones-carga-descarga.cjs",
     "test:browser:fase-a": "CHROMIUM_PATH=${CHROMIUM_PATH:-/usr/local/bin/google-chrome} node tests/browser-fase-a.cjs",
     "test:sql": "bash tests/sql/run-isolated-fase-a.sh",
     "test:fase-b": "node --test tests/fase-b-staging.test.js",
