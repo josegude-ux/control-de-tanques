@@ -191,7 +191,7 @@ test('11. service worker no toca IndexedDB (actualización segura)',()=>{
  assert.equal(/\bindexedDB\s*\./.test(sw),false);
  assert.equal(/openDB|IDBKeyRange|indexedDB\.open/.test(sw),false);
  assert.match(sw,/caches\.(open|keys|match)/);
- assert.match(sw,/control-tanques-demo-v0108/);
+ assert.match(sw,/control-tanques-demo-v0109/);
 });
 
 test('12. compatibilidad apertura 20/10/2026 y forbidSyncedDelete',()=>{
