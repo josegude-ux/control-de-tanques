@@ -1,1 +1,1 @@
-{"version":"0.10.5","notes":"Informes PDF diarios de cargas y descargas: Gerencia general con filtros; Almacén y Reparto sus propios movimientos."}
+{"version":"0.10.8","notes":"Perfil Gerencia mostrado como «Operaciones» (rol interno sin cambios); «Nueva carga» solo se bloquea a Reparto en su propio vehículo."}
